@@ -1,0 +1,5 @@
+data/Raw_*
+data/Fmt_*
+data/Wid_*
+*.zip
+*.pyc
