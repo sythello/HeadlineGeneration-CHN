@@ -25,6 +25,9 @@ def clean_word(sen):
     chars = chn_pt.findall(sen)
     return ''.join([c for c in chars if c in wv or c in u'。！？'])
 
+if not os.path.exists('./%s' % output_dir):
+    os.mkdir('./%s' % output_dir)
+
 for dirpath, dirnames, filenames in os.walk('./' + input_dir):
     for fnm in filenames:
         fin = open('%s/%s' % (dirpath, fnm), 'r')

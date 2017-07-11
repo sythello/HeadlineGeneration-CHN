@@ -16,6 +16,9 @@ fo.close()
 fid = 0
 DIR_SZ = 5000
 
+if not os.path.exists('./%s' % output_dir):
+    os.mkdir('./%s' % output_dir)
+
 for dirpath, dirnames, filenames in os.walk('./' + input_dir):
     for fnm in filenames:
         fo = open('%s/%s' % (dirpath, fnm), 'r')
