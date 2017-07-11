@@ -56,9 +56,9 @@ def load_data(path):
                 t.append(np.array(s).astype('int64'))
             full_set[1].append(t)
 
-            if len(full_set[0]) >= 200000:
+            if len(full_set[0]) >= 2000:
                 break
-        if len(full_set[0]) >= 200000:
+        if len(full_set[0]) >= 2000:
             break
 
     train = [[],[]]

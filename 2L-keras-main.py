@@ -77,9 +77,9 @@ def train_lstm(
 
 	if options['mode'] == 'train':
 	    model.fit(b, t_onehot, batch_size=batch_size, validation_data=[v_b, v_t_onehot], epochs=max_epochs)
-	    model.save_weights('./2L-keras-main.h5')
+	    model.save_weights('./main_keras_params.h5')
 	else:
-	    model.load_weights('./2L-keras-main.h5')
+	    model.load_weights('./main_keras_params.h5')
 
 	wv = KeyedVectors.load('./data/SohuNews_w2v_CHN_300.bin')
 	id2w = cPickle.load(open('./data/id2w.pkl', 'r'))

@@ -49,11 +49,10 @@ def train_lstm(
 	print 'id2v.shape = ' + str(id2v.shape)
 
 	print 'Building model'
+	Body_len = 50
 	Title_len = 10
-	Passage_sens = 10
-	Sen_len = 10
 	
-	model = BiLSTM_AutoEncoder_2Hierarchy(id2v, Passage_sens, Sen_len, Title_len)
+	model = BiGRU_Attention_AutoEncoder(id2v, Body_len, Title_len)
 
 	print 'model done'
 	model.summary()
@@ -66,20 +65,20 @@ def train_lstm(
 	print "%d test examples" % test_n
 
 	t = prepare_data_2d(train[0], Title_len)[0]   													# Train set Titles
-	b = prepare_data_3d(train[1], Passage_sens, Sen_len)[0].reshape((train_n, Passage_sens * Sen_len))   # Train set Bodies
+	b = prepare_data_2d(train[1], Passage_sens, Sen_len)[0].reshape((train_n, Passage_sens * Sen_len))   # Train set Bodies
 	v_t = prepare_data_2d(valid[0], Title_len)[0]
-	v_b = prepare_data_3d(valid[1], Passage_sens, Sen_len)[0].reshape((valid_n, Passage_sens * Sen_len))
+	v_b = prepare_data_2d(valid[1], Passage_sens, Sen_len)[0].reshape((valid_n, Passage_sens * Sen_len))
 	ts_t = prepare_data_2d(test[0], Title_len)[0]
-	ts_b = prepare_data_3d(test[1], Passage_sens, Sen_len)[0].reshape((test_n, Passage_sens * Sen_len))
+	ts_b = prepare_data_2d(test[1], Passage_sens, Sen_len)[0].reshape((test_n, Passage_sens * Sen_len))
 
 	t_onehot = d2_onehot(t, vocab_size)
 	v_t_onehot = d2_onehot(v_t, vocab_size)
 
 	if options['mode'] == 'train':
 	    model.fit(b, t_onehot, batch_size=batch_size, validation_data=[v_b, v_t_onehot], epochs=max_epochs)
-	    model.save_weights('./2L-keras-main.h5')
+	    model.save_weights('./Att-keras-main.h5')
 	else:
-	    model.load_weights('./2L-keras-main.h5')
+	    model.load_weights('./Att-keras-main.h5')
 
 	wv = KeyedVectors.load('./data/SohuNews_w2v_CHN_300.bin')
 	id2w = cPickle.load(open('./data/id2w.pkl', 'r'))

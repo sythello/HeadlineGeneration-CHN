@@ -8,6 +8,8 @@ from keras.optimizers import *
 from keras.utils.np_utils import *
 from keras import backend as K
 
+from MyLayers import *
+
 # y_true: [[[0, ..., 1(id=w1), ..., 0], [0, ..., 1(id=w2), ..., 0], (nwords...)], (nsamples...)]
 # y_pred: [[[P(w1), P(w2), ...], [P(w1), P(w2), ...], (nwords...)], (nsamples...)]
 # loss: NLL
@@ -61,6 +63,24 @@ def BiLSTM_AutoEncoder_2Hierarchy(id2v, Sen_len=10, Passage_sens=10, Title_len=1
     model.compile(optimizer='adam', loss=myLoss)
     return model
 
+def BiGRU_Attention_AutoEncoder(id2v, Body_len, Title_len):
+    vocab_size = len(id2v)
 
+    input_sen = Input(shape=(Body_len,))
+    L_e = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Body_len)
+    L_e.trainable = False
+    input_emb = L_e(input_sen)
+
+    encode_vec = Bidirectional(GRU(300, return_sequences=False), merge_mode='concat')(input_emb)
+
+    t1 = core.RepeatVector(Title_len)(encode_vec)
+
+    decode_mat = Bidirectional(Attention_GRU(300, return_sequences=True), merge_mode='concat')([t1, input_emb])
+
+    output_dstrb = Dense(vocab_size, activation='softmax')(decode_mat)
+
+    model = Model(inputs=input_sen, outputs=output_dstrb)
+    model.compile(optimizer='adam', loss=myLoss)
+    return model
 
 
