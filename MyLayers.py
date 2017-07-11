@@ -132,7 +132,7 @@ class Attention_GRU(Layer):
             self.bias_h = None
         self.built = True
 
-    def preprocess_input(self, inputs, training=None):  # HERE
+    def preprocess_input(self, inputs, training=None):  # TO HERE
         if self.implementation == 0:
             input_shape = K.int_shape(inputs)
             input_dim = input_shape[2]
