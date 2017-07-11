@@ -145,14 +145,17 @@ class Attention_GRU(Layer):
             self.bias_z = None
             self.bias_r = None
             self.bias_h = None
+            
         self.built = True
 
     def call(self, inputs, mask=None, initial_state=None, training=None):
         constants = self.get_constants(inputs, training=None)           # [dp_mask, rec_dp_mask, att]
         preprocessed_input = self.preprocess_input(inputs, training=None)
+        input_shape = K.int_shape(inputs[0])
+
         last_output, outputs, states = K.rnn(self.step,
                                              preprocessed_input,
-                                             initial_states,
+                                             self.get_initial_states(inputs),
                                              go_backwards=self.go_backwards,
                                              mask=mask,
                                              constants=constants,
@@ -223,6 +226,15 @@ class Attention_GRU(Layer):
 
         constants.append(inputs[1])
         return constants
+
+    def get_initial_states(self, inputs):
+        # build an all-zero tensor of shape (samples, output_dim)
+        initial_state = K.zeros_like(inputs[0])  # (samples, timesteps, input_dim)
+        initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
+        initial_state = K.expand_dims(initial_state)  # (samples, 1)
+        initial_state = K.tile(initial_state, [1, self.units])  # (samples, output_dim)
+        initial_states = [initial_state for _ in range(len(self.states))]
+        return initial_states
 
     def step(self, inputs, states):
         h_tm1 = states[0]  # previous memory

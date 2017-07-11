@@ -75,7 +75,7 @@ def BiGRU_Attention_AutoEncoder(id2v, Body_len, Title_len):
 
     t1 = core.RepeatVector(Title_len)(encode_vec)
 
-    decode_mat = Bidirectional(Attention_GRU(300, return_sequences=True), merge_mode='concat')([t1, input_emb])
+    decode_mat = Attention_GRU(300, return_sequences=True, go_backwards=True)([t1, input_emb])
 
     output_dstrb = Dense(vocab_size, activation='softmax')(decode_mat)
 
