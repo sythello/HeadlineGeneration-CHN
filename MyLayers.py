@@ -91,18 +91,32 @@ class Attention_GRU(Layer):
         self.unroll = unroll
         self.implementation = implementation
         self.supports_masking = True
-        self.input_spec = InputSpec(ndim=3)
+        self.input_spec = [InputSpec(ndim=3), InputSpec(ndim=3)]
         self.state_spec = None
         self.dropout = 0
         self.recurrent_dropout = 0
 
-    def build(self, input_shape):
-        if isinstance(input_shape, list):
-            input_shape = input_shape[0]
+    def compute_output_shape(self, input_shape):
+        input_shape = input_shape[0]
+        if self.return_sequences:
+            return (input_shape[0], input_shape[1], self.units)
+        else:
+            return (input_shape[0], self.units)
 
-        batch_size = input_shape[0]
-        self.input_dim = input_shape[2]
-        self.input_spec = InputSpec(shape=(batch_size, None, self.input_dim))
+    def compute_mask(self, inputs, mask):
+        if self.return_sequences:
+            return mask
+        else:
+            return None
+
+    def build(self, input_shape):
+        if not isinstance(input_shape, list):
+            raise ValueError('An Attention_GRU layer takes input as [input_seq, att_seq]')
+
+        batch_size = input_shape[0][0]
+        self.input_dim = input_shape[0][2]
+        self.att_dim = input_shape[1][2]
+        self.input_spec = [InputSpec(shape=(batch_size, None, self.input_dim)), InputSpec(shape=(batch_size, None, self.att_dim))]
         self.state_spec = InputSpec(shape=(batch_size, self.units))
 
         self.states = [None]
@@ -145,7 +159,7 @@ class Attention_GRU(Layer):
             self.bias_z = None
             self.bias_r = None
             self.bias_h = None
-            
+
         self.built = True
 
     def call(self, inputs, mask=None, initial_state=None, training=None):
@@ -157,7 +171,7 @@ class Attention_GRU(Layer):
                                              preprocessed_input,
                                              self.get_initial_states(inputs),
                                              go_backwards=self.go_backwards,
-                                             mask=mask,
+                                             mask=mask[0],
                                              constants=constants,
                                              unroll=self.unroll,
                                              input_length=input_shape[1])
@@ -172,7 +186,7 @@ class Attention_GRU(Layer):
         else:
             return last_output
 
-    def preprocess_input(self, inputs, training=None):  # TO HERE
+    def preprocess_input(self, inputs, training=None):
         if self.implementation == 0:
             input_shape = K.int_shape(inputs[0])
             input_dim = input_shape[2]
@@ -303,8 +317,8 @@ class Attention_GRU(Layer):
 
         # h = (batches, dim)
         # att_seq = (batched, timesteps, dim)
-        a = K.batched_dot(h, att_seq, axes=[1,2])   # a = (batch, timesteps)
-        o = K.batched_dot(att_seq, a, axes=[1,1])
+        a = K.batch_dot(h, att_seq, axes=[1,2])   # a = (batch, timesteps)
+        o = K.batch_dot(att_seq, a, axes=[1,1])
 
         if 0 < self.dropout + self.recurrent_dropout:
             o._uses_learning_phase = True

@@ -39,7 +39,7 @@ def train_lstm(
 	print "model options", options
 
 	print 'Loading data'
-	train, valid, test = load_data('./data/Wid_data_divsens')
+	train, valid, test = load_data('./data/Wid_data')
 	id2v = cPickle.load(open('./data/id2v.pkl', 'r'))
 	id2v = np.matrix(id2v)
 
@@ -64,12 +64,12 @@ def train_lstm(
 	print "%d valid examples" % valid_n
 	print "%d test examples" % test_n
 
-	t = prepare_data_2d(train[0], Title_len)[0]   													# Train set Titles
-	b = prepare_data_2d(train[1], Passage_sens, Sen_len)[0].reshape((train_n, Passage_sens * Sen_len))   # Train set Bodies
+	t = prepare_data_2d(train[0], Title_len)[0]   	# Train set Titles
+	b = prepare_data_2d(train[1], Body_len)[0]   	# Train set Bodies
 	v_t = prepare_data_2d(valid[0], Title_len)[0]
-	v_b = prepare_data_2d(valid[1], Passage_sens, Sen_len)[0].reshape((valid_n, Passage_sens * Sen_len))
+	v_b = prepare_data_2d(valid[1], Body_len)[0]
 	ts_t = prepare_data_2d(test[0], Title_len)[0]
-	ts_b = prepare_data_2d(test[1], Passage_sens, Sen_len)[0].reshape((test_n, Passage_sens * Sen_len))
+	ts_b = prepare_data_2d(test[1], Body_len)[0]
 
 	t_onehot = d2_onehot(t, vocab_size)
 	v_t_onehot = d2_onehot(v_t, vocab_size)
@@ -92,7 +92,7 @@ def train_lstm(
 	    for i in range(min(len(org_title_vec), cnt)):
 	        org_title = ' '.join([id2w[wid] for wid in org_title_vec[i]])
 	        gen_title = ' '.join([id2w[np.argmax(d)] for d in gen_title_vec[i]])
-	        body = '\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
+	        body = ' '.join([id2w[wid] for wid in org_body_vec[i]])
 
 	        fout = open('./data/Sample-output-Keras/out-%s%d.txt' % (dataset_name, i), 'w')
 	        fout.write(('Title:\n%s\nGenerated Title:\n%s\nContent:\n%s\n' % (org_title, gen_title, body)).encode('utf-8'))
