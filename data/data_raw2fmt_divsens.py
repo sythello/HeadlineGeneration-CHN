@@ -36,6 +36,7 @@ for dirpath, dirnames, filenames in os.walk('./' + input_dir):
         
         # Deal with title
         hd = ''
+        lid = 0
         for lid in range(1, len(lines)):
             if lines[lid].find('Content:') >= 0:
                 break
