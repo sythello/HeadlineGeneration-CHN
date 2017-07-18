@@ -1,3 +1,4 @@
+2017-7-4
 目前的思路很简单，就是一个Seq2Seq的模型，本质上是一个AutoEncoder。
 模型的输入是一个字符序列（1维向量），是新闻的正文。
 首先将序列中的词进行embedding（这里对中文处理，用的是字向量，没有做分词），变成2维的 (word_cnt,  dim)。（dim是字向量的维度）
@@ -13,3 +14,9 @@ Loss采用的是cross_entropy（negative log-likelihood），即对于真正标�
 
 下一步的话，可以先尝试简单的改进，多堆几层LSTM。还不行的话，尝试加入双向LSTM。之后再去尝试attention。
 
+2017-7-17
+目前已经尝试了多堆几层的LSTM，以及双向LSTM，在Keras里实现都很简单，但是效果仍然不行。
+按照老师的指导，尝试把encoder分为两阶段，第一阶段LSTM输入每个句子，输出该句子的向量表示；第二阶段LSTM输入每个句子的向量表示，输出文档表示，作为context vector，然后decode。但是这样依然效果不行。
+（后来为了方便训练改成了GRU）
+所以就尝试加入了attention，目前的attention机制是这样的：在decode阶段，每一步的输入仍是context vector，但得到GRU的隐层向量h之后，在原输入句子中进行attention，权重为内积。得到向量称为o。然后把o作为隐层向量输入给下一步（替代原本输入给下一步的h）。
+但是效果仍然不佳。现在的想法是尝试修改这个attention模型。参考爱丁堡大学的wmt17机器翻译模型，似乎是在attention之后又加了很多层的全联接才得到最终的“隐层向量”o，并且使用了很多的Layer Normalisation。或许我这里也可以尝试一下。

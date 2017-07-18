@@ -35,7 +35,7 @@ def prepare_data_3d(ss, maxsen, maxlen):
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
 # title, body: (n, words)
-def load_data(path):
+def load_data(path, data_set_size=150000):
     full_set = [[], []]
     for dirpath, dirnames, filenames in os.walk(path):
         for fnm in filenames:
@@ -56,19 +56,19 @@ def load_data(path):
                 t.append(np.array(s).astype('int64'))
             full_set[1].append(t)
 
-            if len(full_set[0]) >= 100000:
+            if len(full_set[0]) >= data_set_size:
                 break
-        if len(full_set[0]) >= 100000:
+        if len(full_set[0]) >= data_set_size:
             break
 
     train = [[],[]]
     dev = [[],[]]
     test = [[],[]]
     for i in range(len(full_set[0])):
-        if i % 8 <= 5:
+        if i % 100 < 90:
             train[0].append(full_set[0][i])
             train[1].append(full_set[1][i])
-        elif i % 8 == 6:
+        elif i % 100 < 99:
             dev[0].append(full_set[0][i])
             dev[1].append(full_set[1][i])
         else:

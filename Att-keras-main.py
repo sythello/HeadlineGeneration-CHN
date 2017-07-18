@@ -39,7 +39,7 @@ def train_lstm(
 	print "model options", options
 
 	print 'Loading data'
-	train, valid, test = load_data('./data/Wid_data')
+	train, valid, test = load_data('./data/Wid_data', 1000) if options['mode'] == 'debug' else load_data('./data/Wid_data')
 	id2v = cPickle.load(open('./data/id2v.pkl', 'r'))
 	id2v = np.matrix(id2v)
 
@@ -74,9 +74,10 @@ def train_lstm(
 	t_onehot = d2_onehot(t, vocab_size)
 	v_t_onehot = d2_onehot(v_t, vocab_size)
 
-	if options['mode'] == 'train':
+	if options['mode'] == 'train' or options['mode'] == 'debug':
 	    model.fit(b, t_onehot, batch_size=batch_size, validation_data=[v_b, v_t_onehot], epochs=max_epochs)
-	    model.save_weights('./Att-keras-main.h5')
+	    if options['mode'] == 'train':
+	    	model.save_weights('./Att-keras-main.h5')
 	else:
 	    model.load_weights('./Att-keras-main.h5')
 
@@ -109,7 +110,7 @@ if __name__ == '__main__':
     ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
     ap.add_argument('-batch_size', type=int, default=20, help='The batch size during training.')
     ap.add_argument('-valid_batch_size', type=int, default=300, help='The batch size used for validation/test set.')
-    ap.add_argument('-mode', type=str, default='train', help='"train" or "test"')
+    ap.add_argument('-mode', type=str, default='debug', help='"train", "test" or "debug"')
 
     args = vars(ap.parse_args())
     train_lstm(**args)

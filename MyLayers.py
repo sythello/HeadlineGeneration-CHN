@@ -142,6 +142,7 @@ class Attention_GRU(Layer):
         else:
             self.bias = None
 
+
         self.kernel_z = self.kernel[:, :self.units]
         self.recurrent_kernel_z = self.recurrent_kernel[:, :self.units]
         self.kernel_r = self.kernel[:, self.units: self.units * 2]
@@ -160,6 +161,25 @@ class Attention_GRU(Layer):
             self.bias_r = None
             self.bias_h = None
 
+        # Added parameters
+        self.after_att_layers_cnt = 3    # You can tune this
+
+        self.after_att_kernel = self.add_weight((self.units, self.units * self.after_att_layers_cnt),
+                                        name='after_att_kernel',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint)
+
+        self.after_att_kernel_list = [self.after_att_kernel[:, self.units * i: self.units * (i + 1)] for i in range(self.after_att_layers_cnt)]
+
+        self.after_att_bias = self.add_weight((self.units * self.after_att_layers_cnt,),
+                                        name='after_att_bias',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
+
+        self.after_att_bias_list = [self.after_att_bias[self.units * i: self.units * (i + 1)] for i in range(self.after_att_layers_cnt)]
+
         self.built = True
 
     def call(self, inputs, mask=None, initial_state=None, training=None):
@@ -167,9 +187,12 @@ class Attention_GRU(Layer):
         preprocessed_input = self.preprocess_input(inputs, training=None)
         input_shape = K.int_shape(inputs[0])
 
+        if initial_state == None:
+            initial_state = self.get_initial_states(inputs)
+
         last_output, outputs, states = K.rnn(self.step,
                                              preprocessed_input,
-                                             self.get_initial_states(inputs),
+                                             initial_state,
                                              go_backwards=self.go_backwards,
                                              mask=mask[0],
                                              constants=constants,
@@ -318,7 +341,11 @@ class Attention_GRU(Layer):
         # h = (batches, dim)
         # att_seq = (batched, timesteps, dim)
         a = K.batch_dot(h, att_seq, axes=[1,2])   # a = (batch, timesteps)
+        a = K.softmax(a)
         o = K.batch_dot(att_seq, a, axes=[1,1])
+
+        for i in range(self.after_att_layers_cnt):
+            o = K.relu(K.dot(o, self.after_att_kernel_list[i]) + self.after_att_bias_list[i], alpha=0.01)
 
         if 0 < self.dropout + self.recurrent_dropout:
             o._uses_learning_phase = True
