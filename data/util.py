@@ -35,9 +35,9 @@ def prepare_data_3d(ss, maxsen, maxlen):
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
 # title, body: (n, words)
-def load_data(path, data_set_size=150000):
+def load_data(path, data_set_size=160000):
     full_set = [[], []]
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in list(os.walk(path)):
         for fnm in filenames:
             if fnm[-4:] != '.txt':  # Not a txt file
                 continue
@@ -92,4 +92,12 @@ def d2_onehot(sens, vocab_size):
     slen = sens.shape[1]
     sens_onehot = to_categorical(sens.reshape(nsamples * slen), vocab_size).reshape(nsamples, slen, vocab_size)
     return sens_onehot
+
+def k_argmax(v, k=10):
+    if k >= len(v):
+        return v
+
+    ind = np.argpartition(v, -k)[-k:]
+    k_argmax_ = ind[np.argsort(-v[ind])]
+    return k_argmax_
 

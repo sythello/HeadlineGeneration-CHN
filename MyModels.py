@@ -25,7 +25,7 @@ def myLoss(y_true, y_pred):
 
     sim_loss = K.mean(K.mean(K.batch_dot(y_true, -K.log(y_pred + 1e-6), axes=2)))
     var_loss = K.mean(K.mean(-K.var(y_pred, axis=1)))
-    return sim_loss + var_loss
+    return sim_loss + 10 * var_loss
 
 def BiLSTM_AutoEncoder(id2v, Body_len=100, Title_len=10):
     vocab_size = len(id2v)
@@ -68,7 +68,7 @@ def BiLSTM_AutoEncoder_2Hierarchy(id2v, Sen_len=10, Passage_sens=10, Title_len=1
 
 def BiGRU_Attention_AutoEncoder(id2v, Body_len, Title_len, h_dim=300, fw_init=None, bw_init=None):
     vocab_size = len(id2v)
-
+    print 'In BiGRU_Attention_AutoEncoder(): vocab_size = %d' % vocab_size
     input_sen = Input(shape=(Body_len,))
     L_e = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Body_len)
     L_e.trainable = False
@@ -80,7 +80,11 @@ def BiGRU_Attention_AutoEncoder(id2v, Body_len, Title_len, h_dim=300, fw_init=No
 
     t1 = core.RepeatVector(Title_len)(encode_vec)
 
-    decode_mat = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t1, input_emb])
+    t2 = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t1, input_emb])
+    t2 = BatchNormalization()(t2)
+    t3 = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t2, input_emb])
+    t3 = BatchNormalization()(t3)
+    decode_mat = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t3, input_emb])
     decode_mat = BatchNormalization()(decode_mat)
 
     output_dstrb = Dense(vocab_size, activation='softmax')(decode_mat)

@@ -7,10 +7,10 @@ from gensim.models import *
 rng = np.random
 
 WRITE_DICT = True
-input_dir = 'Fmt_data'
+input_dir = 'Fmt_data_divsens'
 # stop_words_file = 'Stop-words-none.txt'
 
-w2vmodel = KeyedVectors.load('SohuNews_w2v_CHN_300.bin')
+wv = KeyedVectors.load('SohuNews_w2v_CHN_300.bin')
 
 d = {}                          # Used words: word -> vector
 d_w2id = {}                     # word -> id
@@ -23,9 +23,9 @@ id2v = []                       # id -> vector
 # for i in range(len(stop_words)):
 #     stop_words[i] = stop_words[i].strip()
 
-def regWord(wd):
-    if wd in w2vmodel:
-        d[wd] = w2vmodel[wd]
+def regWord(w):
+    if w in wv:
+        d[w] = wv[w]
     # elif len(wd) > 0 and not d.has_key(wd):
     #     _v = rng.uniform(-1, 1, 300)
     #     _v = _v / np.linalg.norm(_v)
@@ -38,17 +38,17 @@ for dirpath, dirnames, filenames in os.walk('./' + input_dir):
         lines = fo.readlines()
         fo.close()
 
-        if len(lines) != 4:     # Malformed
+        if len(lines) < 4:     # Malformed
             continue
-        title = lines[1].strip().decode('utf-8')
-        ctnt = lines[3].strip().decode('utf-8')
+        title = lines[1].decode('utf-8').split(' ')     # Don't strip(), because the end mark is 'ED\n'...
+        ctnt = ' '.join([lines[i].decode('utf-8') for i in range(3, len(lines))]).split(' ')
 
         for wd in title:
             regWord(wd)
         for wd in ctnt:
             regWord(wd)
 
-        if fid % 1000 == 0:
+        if fid % 5000 == 0:
             print('Progress: %d' % fid)
         fid += 1
 
@@ -58,11 +58,13 @@ if WRITE_DICT:
     d_w2id[''] = 0
     id2w.append('')
     id2v.append(np.zeros(300))              # word No.0 is 'padding'
+    index = 1
     for w, v in d.iteritems():
-        d_w2id[w] = len(id2w)               # New index = current len of the list
+        d_w2id[w] = index                   # New index = current len of the list
         id2w.append(w)
         id2v.append(v)
-        
+        index += 1
+
     fo = open('w2id.pkl', 'wb')
     cPickle.dump(d_w2id, fo)
     fo.close()

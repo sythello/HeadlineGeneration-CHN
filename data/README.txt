@@ -1,9 +1,9 @@
 1. Data preprocessing
-python data_raw2fmt_nodivsens.py
+python data_raw2fmt_divsens.py
 python build_dict.py
-python data_fmt2id_nodivsens.py
+python data_fmt2id_divsens.py
 
-(divsens version is suspended)
+(nodivsens version is suspended)
 
 2. Encoding
 Sohu_xxx.bin: unicode
