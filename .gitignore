@@ -1,5 +1,6 @@
 data/Raw_*
 data/Fmt_*
 data/Wid_*
+data/Sample-output-Keras/*
 *.zip
 *.pyc

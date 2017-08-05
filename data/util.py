@@ -32,10 +32,27 @@ def prepare_data_3d(ss, maxsen, maxlen):
             m[i, j, 0:slen] = 1
     return x, m
 
+# Input: A batch, shape = (nsamples, sens, words)
+# Return: A batch, shape = (nsamples, maxlen)
+def prepare_data_3dto2d(ss, maxlen):
+    x = np.zeros(shape=(len(ss), maxlen), dtype='int64')
+    m = np.zeros(shape=(len(ss), maxlen))
+    for i in range(len(ss)):            # i: sample(news) id
+        cur_len = 0
+        for j in range(len(ss[i])):     # j: sen id
+            # print 'ss[i][j].shape = ' + str(ss[i][j].shape)
+            slen = min(len(ss[i][j]), maxlen - cur_len)
+            x[i, cur_len : cur_len + slen] = ss[i][j][0 : slen]
+            m[i, cur_len : cur_len + slen] = 1
+            cur_len += slen
+            if cur_len >= maxlen:
+                break
+    return x, m
+
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
 # title, body: (n, words)
-def load_data(path, data_set_size=160000):
+def load_data(path, data_set_size=240000):
     full_set = [[], []]
     for dirpath, dirnames, filenames in list(os.walk(path)):
         for fnm in filenames:
@@ -65,7 +82,7 @@ def load_data(path, data_set_size=160000):
     dev = [[],[]]
     test = [[],[]]
     for i in range(len(full_set[0])):
-        if i % 100 < 90:
+        if i % 100 < 98:
             train[0].append(full_set[0][i])
             train[1].append(full_set[1][i])
         elif i % 100 < 99:
