@@ -21,12 +21,16 @@ xxx...
 
 Fmt:
 Title:
-xxxxxx (no punctuations, all sentences concatenated, no unknown words)
+BG x x x x x x ED (no punctuations, no unknown words)
 Content:
-xxxxxx
+BG x x x x x ED
+BG x x x ED
+BG x x x x ED
+...
 
 Wid:
-[title_word_list, body_word_list]	# in the lists are all the words' indexs (BianHao)
+[title_words_list, body_sens_list]	# in the lists are all the words' indexs (BianHao)
+body_sens_list = [sen_words_list]
 
 4. About Dictionary
 id2w: An array of strings, word_id -> word
