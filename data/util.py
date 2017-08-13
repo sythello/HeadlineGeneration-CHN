@@ -51,7 +51,7 @@ def prepare_data_3dto2d(ss, maxlen):
 
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
-# title, body: (n, words)
+# title, body: (batch, words)
 def load_data(path, data_set_size=240000):
     full_set = [[], []]
     for dirpath, dirnames, filenames in list(os.walk(path)):
@@ -82,10 +82,10 @@ def load_data(path, data_set_size=240000):
     dev = [[],[]]
     test = [[],[]]
     for i in range(len(full_set[0])):
-        if i % 100 < 98:
+        if i % 10 < 8:
             train[0].append(full_set[0][i])
             train[1].append(full_set[1][i])
-        elif i % 100 < 99:
+        elif i % 10 == 8:
             dev[0].append(full_set[0][i])
             dev[1].append(full_set[1][i])
         else:

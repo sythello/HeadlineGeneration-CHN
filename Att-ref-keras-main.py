@@ -26,6 +26,7 @@ from gensim.models import *
 from data.util import *
 from util import *
 from MyModels import *
+from generate import *
 
 def train_lstm(
     dim_proj,  # word embeding dimension and LSTM number of hidden units.
@@ -42,7 +43,7 @@ def train_lstm(
 
 	print 'Loading data'
 	input_dir = './data/Wid_data_divsens'
-	train, valid, test = load_data(input_dir) if options['mode'] == 'train' else load_data(input_dir, 1000)
+	train, valid, test = load_data(input_dir) if options['mode'] == 'train' else load_data(input_dir, 20)
 	id2v = cPickle.load(open('./data/id2v.pkl', 'r'))
 	id2v = np.matrix(id2v)
 
@@ -52,12 +53,14 @@ def train_lstm(
 	print 'id2v.shape = ' + str(id2v.shape)
 
 	print 'Building model'
-	Max_sen = 5
-	Sen_len = 10
-	Max_len = 50 	# Body_len
+	Max_sen = 6
+	Sen_len = 15
+	Max_len = 90 	# Body_len
 	Title_len = 15
 	
 	model, model_show = BiGRU_Attention_Ref_AutoEncoder(id2v, Max_len, Title_len)
+	# Wanted output title: no BG. ref = (BG, w1, w2, ...), out = (p_w1, p_w2, p_w3, ...), label = (w1, w2, w3)
+	# Otherwise the model only needs to copy input to output
 
 	print 'model done'
 	model.summary()
@@ -70,11 +73,11 @@ def train_lstm(
 	print "%d valid examples" % valid_n
 	print "%d test examples" % test_n
 
-	t = prepare_data_2d(train[0], Title_len)[0]   		# Train set Titles
-	b = prepare_data_3dto2d(train[1], Max_len)[0]   	# Train set Bodies
-	v_t = prepare_data_2d(valid[0], Title_len)[0]
+	t = prepare_data_2d(train[0], Title_len + 1)[0]   		# Train set Titles
+	b = prepare_data_3dto2d(train[1], Max_len)[0]   		# Train set Bodies
+	v_t = prepare_data_2d(valid[0], Title_len + 1)[0]
 	v_b = prepare_data_3dto2d(valid[1], Max_len)[0]
-	ts_t = prepare_data_2d(test[0], Title_len)[0]
+	ts_t = prepare_data_2d(test[0], Title_len + 1)[0]
 	ts_b = prepare_data_3dto2d(test[1], Max_len)[0]
 	# shape = (batch, words)
 
@@ -83,15 +86,15 @@ def train_lstm(
 	# shape = (batch, words, vocab_size)
 
 	def get_input_data(body_list, title_list, start_i=None, end_i=None, Title_len=Title_len):
-		# Return: [[b[], t[], 0], [b[], t[], 1], ..., [b[], t[], Title_len-1]]
+		# Return: [[b0, t0, 0], [b1, t1, 0], ..., [b0, t0, 1], [b1, t1, 1], ..., [b0, t0, Title_len-1], ...]
 
 		if start_i == None:
 			start_i = 0
 		if end_i == None:
 			end_i = len(body_list)
 
-		_b = list(body_list)[start_i : end_i] * Title_len
-		_t = list(title_list)[start_i : end_i] * Title_len
+		_b = list(body_list[start_i : end_i]) * Title_len
+		_t = list(title_list[start_i : end_i, 0 : Title_len]) * Title_len
 		_wpos = []
 		for j in range(Title_len):
 			_wpos += [j] * (end_i - start_i)
@@ -112,31 +115,26 @@ def train_lstm(
 
 		r_list = []
 		for j in range(Title_len):
-			r_list += list(title_onehot_list[start_i : end_i, j])
+			r_list += list(title_onehot_list[start_i : end_i, j+1])	# Want the distribution of word j+1 at position j
 
 		return np.array(r_list)
 
-	block_size = 6000
-	blocks = train_n / block_size
 	if options['mode'] == 'train':
+		block_size = 1000
+		blocks = train_n / block_size
+		v_block_size = valid_n / blocks
+
 		if os.path.isfile('./Att-ref-keras-main.h5'):
 			model.load_weights('./Att-ref-keras-main.h5')
 		for e in range(max_epochs):
-			for i in range(15, blocks):
-				print 'Block %d/%d' % (i, blocks)
+			for i in range(0, blocks):
+				print 'Block %d/%d' % (i+1, blocks)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
 						  y=get_labels(t_onehot, i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
-						  validation_data=[get_input_data(v_b, v_t), get_labels(v_t_onehot)],\
+						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t_onehot, i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
-				# for j in range(Title_len):
-				# 	print 'Block %d(%d)/%d' % (i, j, blocks)
-				
-				# 	model.fit(x=[b[i*block_size : (i+1)*block_size], t[i*block_size : (i+1)*block_size], np.array([j] * block_size)],\
-				# 			  y=t_onehot[i*block_size : (i+1)*block_size, j],\
-				# 			  batch_size=batch_size,\
-				# 			  validation_data=[[v_b, v_t, np.array([j] * len(v_t))], v_t_onehot[:, j]],\
-				# 			  epochs=1)
+
 				model.save_weights('./Att-ref-keras-main.h5')
 	elif options['mode'] == 'debug':
 		train_input_data = get_input_data(b, t)
@@ -157,30 +155,34 @@ def train_lstm(
 
 	# wv = KeyedVectors.load('./data/SohuNews_w2v_CHN_300.bin')
 	id2w = cPickle.load(open('./data/id2w.pkl', 'r'))
+	w2id = cPickle.load(open('./data/w2id.pkl', 'r'))
 
 	show_cnt = 10
 	# train_gen_title = model.predict(b[:show_cnt])
 	# valid_gen_title = model.predict(v_b[:show_cnt])
 	# test_gen_title = model.predict(ts_b[:show_cnt])
 
+	# Generate(model, ts_b[0], vocab_size, w2id, id2w, beam_size=2, n_best=2)
+	# quit()
+
 	def get_output(org_title_vec, org_body_vec, input_data, ref_data, cnt, dataset_name):
 		# model_show outputs = [input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb]
 		# layer_names = ['input_emb', 'encode_seq', 'ref_emb', 'decode_seq', 'step_vec', 'output_dstrb']
 		cnt = min(len(org_title_vec), cnt)
-		model_output = np.array([model.predict([input_data, ref_data, np.array([j] * cnt)]) for j in range(Title_len)])
+		tcf_output = np.array([model.predict([input_data, ref_data, np.array([j] * cnt)]) for j in range(Title_len)])
 		# shape = (word_pos, samples, dstrb)
 
 		for i in range(cnt):			# for each document
 			org_title = ' '.join([id2w[wid] for wid in org_title_vec[i]])
-			gen_title = ' '.join([id2w[np.argmax(d)] for d in model_output[:, i, :]])
+			tcf_gen_title = ' '.join([id2w[np.argmax(d)] for d in tcf_output[:, i, :]])
 			body = '\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
 
 			fout = open('./data/Sample-output-Keras/out-%s%d.txt' % (dataset_name, i), 'w')
-			fout.write(('Title:\n%s\nGenerated Title:\n%s\nContent:\n%s\n' % (org_title, gen_title, body)).encode('utf-8'))
-			# fout.write('Generated Title Distribution:\n%s\n' % str(model_output[-1][i]))
+			fout.write(('Title:\n%s\nContent:\n%s\nTeacher Forced Generated Title:\n%s\n' % (org_title, body, tcf_gen_title)).encode('utf-8'))
+			# fout.write('Generated Title Distribution:\n%s\n' % str(tcf_output[-1][i]))
 			fout.write('Distribution for each word in title:\n')
 			for j in range(Title_len):
-				dst = model_output[j, i]	# distribution for j-th word
+				dst = tcf_output[j, i]	# distribution for j-th word
 				k_argm = k_argmax(dst, 10)
 				fout.write('%d:\n' % (j+1))
 				for k in k_argm:	# k is the word_id
@@ -190,20 +192,27 @@ def train_lstm(
 			# fout.write('\nOutput of each layer:\n')
 			# for j in range(len(layer_names)):
 			# 	fout.write('%s:\n' % layer_names[j])
-			# 	fout.write(str(model_output[j][i]) + '\n')
+			# 	fout.write(str(tcf_output[j][i]) + '\n')
+
+			best_gen_title_list = Generate(model, input_data[i], vocab_size, w2id, id2w, Title_len=Title_len, beam_size=20, n_best=10)
+			fout.write('\nGenerated Titles:\n')
+			for k in range(len(best_gen_title_list)):
+				(t, p) = best_gen_title_list[k]
+				_title = ' '.join(id2w[wid] for wid in t)
+				fout.write('No. %d\n%s%.6f\n' % (k+1, _title.encode('utf-8'), p))
 
 			fout.close()
 
-	get_output(train[0], train[1], b[:show_cnt], t[:show_cnt], show_cnt, 'train')
-	get_output(valid[0], valid[1], v_b[:show_cnt], v_t[:show_cnt], show_cnt, 'valid')
-	get_output(test[0], test[1], ts_b[:show_cnt], ts_t[:show_cnt], show_cnt, 'test')
+	get_output(train[0], train[1], b[:show_cnt], t[:show_cnt, :Title_len], show_cnt, 'train')
+	get_output(valid[0], valid[1], v_b[:show_cnt], v_t[:show_cnt, :Title_len], show_cnt, 'valid')
+	get_output(test[0], test[1], ts_b[:show_cnt], ts_t[:show_cnt, :Title_len], show_cnt, 'test')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('-dim_proj', type=int, default=300, help='word embeding dimension and HLSTM number of hidden units.')
     ap.add_argument('-max_epochs', type=int, default=1, help='The maximum number of epoch to run')
     ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
-    ap.add_argument('-batch_size', type=int, default=100, help='The batch size during training.')
+    ap.add_argument('-batch_size', type=int, default=300, help='The batch size during training.')
     ap.add_argument('-valid_batch_size', type=int, default=300, help='The batch size used for validation/test set.')
     ap.add_argument('-mode', type=str, default='train', help='"train", "test" or "debug"')
 
