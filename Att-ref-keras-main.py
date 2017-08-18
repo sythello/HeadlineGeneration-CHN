@@ -43,7 +43,7 @@ def train_lstm(
 
 	print 'Loading data'
 	input_dir = './data/Wid_data_divsens'
-	train, valid, test = load_data(input_dir) if options['mode'] == 'train' else load_data(input_dir, 20)
+	train, valid, test = load_data(input_dir) if options['mode'] == 'train' else load_data(input_dir, 100)
 	id2v = cPickle.load(open('./data/id2v.pkl', 'r'))
 	id2v = np.matrix(id2v)
 
@@ -54,11 +54,11 @@ def train_lstm(
 
 	print 'Building model'
 	Max_sen = 6
-	Sen_len = 15
-	Max_len = 90 	# Body_len
+	Sen_len = 20
+	Max_len = 120 	# Body_len
 	Title_len = 15
 	
-	model, model_show = BiGRU_Attention_Ref_AutoEncoder(id2v, Max_len, Title_len)
+	model, model_show = BiGRU_Attention_Ref_AutoEncoder(id2v, Sen_len=Sen_len, Max_sen=Max_sen, Title_len=Title_len)
 	# Wanted output title: no BG. ref = (BG, w1, w2, ...), out = (p_w1, p_w2, p_w3, ...), label = (w1, w2, w3)
 	# Otherwise the model only needs to copy input to output
 
@@ -141,11 +141,17 @@ def train_lstm(
 		train_labels = get_labels(t_onehot)
 		print 'input shape = %s' % str((train_input_data[0].shape, train_input_data[1].shape, train_input_data[2].shape))
 		print 'labels shape = %s' % str(train_labels.shape)
+		# model.fit(x=train_input_data,\
+		# 		  y=train_labels,\
+		# 		  batch_size=batch_size,\
+		# 		  validation_data=[get_input_data(v_b, v_t), get_labels(v_t_onehot)],\
+		# 		  epochs=1)
+		# model.save_weights('./Att-ref-keras-main.h5')
 		model.fit(x=train_input_data,\
 				  y=train_labels,\
-				  batch_size=batch_size,\
-				  validation_data=[get_input_data(v_b, v_t), get_labels(v_t_onehot)],\
-				  epochs=1)
+				  batch_size=20,\
+				  validation_data=[train_input_data, train_labels],\
+				  epochs=50)
 		model.save_weights('./Att-ref-keras-main.h5')
 	else:
 	    model.load_weights('./Att-ref-keras-main.h5')
@@ -214,7 +220,7 @@ if __name__ == '__main__':
     ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
     ap.add_argument('-batch_size', type=int, default=300, help='The batch size during training.')
     ap.add_argument('-valid_batch_size', type=int, default=300, help='The batch size used for validation/test set.')
-    ap.add_argument('-mode', type=str, default='train', help='"train", "test" or "debug"')
+    ap.add_argument('-mode', type=str, default='debug', help='"train", "test" or "debug"')
 
     args = vars(ap.parse_args())
     train_lstm(**args)

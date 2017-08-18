@@ -63,14 +63,14 @@ def BiLSTM_AutoEncoder(id2v, Body_len=100, Title_len=10):
     model.compile(optimizer='adam', loss=m_SeqNLL)
     return model
 
-def BiLSTM_AutoEncoder_2Hierarchy(id2v, Sen_len=10, Passage_sens=10, Title_len=10):
+def BiLSTM_AutoEncoder_2Hierarchy(id2v, Sen_len=10, Max_sen=10, Title_len=10):
     vocab_size = len(id2v)
 
     model = Sequential()
-    layer_e = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=False, input_length=Passage_sens * Sen_len)
+    layer_e = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=False, input_length=Max_sen * Sen_len)
     layer_e.trainable = False
     model.add(layer_e)
-    model.add(Reshape(target_shape=(Passage_sens, Sen_len, 300)))
+    model.add(Reshape(target_shape=(Max_sen, Sen_len, 300)))
     # shape = (batch, sens, words, 300)
     model.add(TimeDistributed(Bidirectional(LSTM(300, input_shape=(10,300), return_sequences=False), merge_mode='concat')))
     # shape = (batch, sens, 600)
@@ -133,19 +133,32 @@ def BiGRU_Attention_Feedback_AutoEncoder(id2v, Body_len, Title_len, h_dim=300):
     model.compile(optimizer='adam', loss=m_SeqNLL)
     return model
 
-def BiGRU_Attention_Ref_AutoEncoder(id2v, Body_len, Title_len, h_dim=300):
+def BiGRU_Attention_Ref_AutoEncoder(id2v, Sen_len, Max_sen, Title_len, h_dim=300):
     vocab_size = len(id2v)
+    Body_len = Sen_len * Max_sen
+
     input_sen = Input(shape=(Body_len,))
-    L_e1 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Body_len)
+    L_e1 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=False, input_length=Body_len)
     L_e1.trainable = False
     input_emb = L_e1(input_sen)
 
-    encode_vec = Bidirectional(GRU(h_dim, return_sequences=False, go_backwards=False))(input_emb)
-    # encode_vec_fw = GRU(h_dim, return_sequences=False, go_backwards=False)(input_emb)
-    # encode_vec_bw = GRU(h_dim, return_sequences=False, go_backwards=True)(input_emb)
-    # encode_vec = concatenate([encode_vec_fw, encode_vec_bw])
+    # Treat the body as one sequence
+    encode_vec_1 = Bidirectional(GRU(h_dim, return_sequences=False), merge_mode='concat')(input_emb)
+    # shape = (batch, 2*h_dim)
+
+    # Treat the body as several sequences
+    encode_vec_2_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
+    # shape = (batch, Max_sen, Sen_len, h_dim)
+    encode_vec_2_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=False), merge_mode='concat'))(encode_vec_2_h0)
+    # shape = (batch, Max_sen, 2*h_dim)
+    encode_vec_2_h2 = Bidirectional(LSTM(h_dim, return_sequences=False), merge_mode='concat')(encode_vec_2_h1)
+    # shape = (batch, 2*h_dim)
+
+    encode_vec = Dense(h_dim, activation='softmax')(concatenate([encode_vec_1, encode_vec_2_h2]))
+    # shape = (batch, h_dim)
 
     encode_seq = core.RepeatVector(Title_len)(encode_vec)
+    # shape = (batch, Title_len, h_dim)
 
     ref_sen = Input(shape=(Title_len,))
     L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)

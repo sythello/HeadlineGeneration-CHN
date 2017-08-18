@@ -19,7 +19,7 @@ def Generate(
 	# input_sen is a list of wid
 	# Return: a list of n_best tuples with format (sen, avg_log_p)
 
-	print ' '.join([id2w[wid] for wid in input_sen]).encode('utf-8')
+	# print ' '.join([id2w[wid] for wid in input_sen]).encode('utf-8')
 
 	bg_id = w2id['BG']
 	ed_id = w2id['ED\n']
