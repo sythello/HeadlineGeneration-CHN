@@ -2,6 +2,9 @@
 python data_raw2fmt_divsens.py
 python build_dict.py
 python data_fmt2id_divsens.py
+python data_raw2summ.py
+python data_rawsumm2fmtsumm.py
+python data_fmtsumm2id.py
 
 (nodivsens version is suspended)
 

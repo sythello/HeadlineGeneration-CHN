@@ -118,3 +118,9 @@ def k_argmax(v, k=10):
     k_argmax_ = ind[np.argsort(-v[ind])]
     return k_argmax_
 
+def Saveweights(model, fname):
+    cPickle.dump(model.get_weights(), open(fname, 'w'))
+
+def Loadweights(fname):
+    return cPickle.load(open(fname, 'r'))
+

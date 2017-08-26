@@ -22,7 +22,7 @@ def Generate(
 	# print ' '.join([id2w[wid] for wid in input_sen]).encode('utf-8')
 
 	bg_id = w2id['BG']
-	ed_id = w2id['ED\n']
+	ed_id = w2id['ED']
 
 	init_title = [bg_id] + [0 for _ in range(Title_len - 1)]
 

@@ -40,7 +40,7 @@ for dirpath, dirnames, filenames in os.walk('./' + input_dir):
 
         if len(lines) < 4:     # Malformed
             continue
-        title = lines[1].decode('utf-8').split(' ')     # Don't strip(), because the end mark is 'ED\n'...
+        title = lines[1].decode('utf-8').split(' ')     # Don't strip() now, because the end mark is 'ED\n' in the word2vec file
         ctnt = ' '.join([lines[i].decode('utf-8') for i in range(3, len(lines))]).split(' ')
 
         for wd in title:
@@ -58,12 +58,12 @@ if WRITE_DICT:
     d_w2id[''] = 0
     id2w.append('')
     id2v.append(np.zeros(300))              # word No.0 is 'padding'
-    index = 1
+
     for w, v in d.iteritems():
-        d_w2id[w] = index                   # New index = current len of the list
+        w = w.strip()                       # Deal with 'ED\n'
+        d_w2id[w] = len(id2w)               # New index = current len of the list
         id2w.append(w)
         id2v.append(v)
-        index += 1
 
     fo = open('w2id.pkl', 'wb')
     cPickle.dump(d_w2id, fo)

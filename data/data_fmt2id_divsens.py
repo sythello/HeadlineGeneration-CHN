@@ -27,8 +27,8 @@ for dirpath, dirnames, filenames in os.walk('./' + input_dir):
 
         if len(lines) < 4:  # Malformed
             continue
-        title = lines[1].decode('utf-8').split(' ')      # Don't strip(), because the end mark is 'ED\n'...
-        ctnt = [lines[i].decode('utf-8').split(' ') for i in range(3, len(lines))]
+        title = lines[1].decode('utf-8').strip().split(' ')
+        ctnt = [lines[i].decode('utf-8').strip().split(' ') for i in range(3, len(lines))]
 
         title_id = []
         ctnt_id = []

@@ -124,18 +124,18 @@ def train_lstm(
 		blocks = train_n / block_size
 		v_block_size = valid_n / blocks
 
-		if os.path.isfile('./Att-ref-keras-main.h5'):
-			model.load_weights('./Att-ref-keras-main.h5')
+		if os.path.isfile('./Att-ref-keras-main.pkl'):
+			model.set_weights(Loadweights('./Att-ref-keras-main.pkl'))
 		for e in range(max_epochs):
-			for i in range(0, blocks):
-				print 'Block %d/%d' % (i+1, blocks)
+			for i in range(169, blocks):
+				print 'Block %d/%d' % (i, blocks)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
 						  y=get_labels(t_onehot, i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
 						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t_onehot, i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
-				model.save_weights('./Att-ref-keras-main.h5')
+				Saveweights(model, './Att-ref-keras-main.pkl')
 	elif options['mode'] == 'debug':
 		train_input_data = get_input_data(b, t)
 		train_labels = get_labels(t_onehot)
@@ -146,15 +146,14 @@ def train_lstm(
 		# 		  batch_size=batch_size,\
 		# 		  validation_data=[get_input_data(v_b, v_t), get_labels(v_t_onehot)],\
 		# 		  epochs=1)
-		# model.save_weights('./Att-ref-keras-main.h5')
 		model.fit(x=train_input_data,\
 				  y=train_labels,\
-				  batch_size=20,\
+				  batch_size=batch_size,\
 				  validation_data=[train_input_data, train_labels],\
-				  epochs=50)
-		model.save_weights('./Att-ref-keras-main.h5')
+				  epochs=1)
+		Saveweights(model, './Att-ref-keras-main.pkl')
 	else:
-	    model.load_weights('./Att-ref-keras-main.h5')
+	    model.set_weights(Loadweights('./Att-ref-keras-main.pkl'))
 
 	# open('model_weights.txt', 'w').write(str(model.get_weights()))
 	# open('model_config.txt', 'w').write(str(model.get_config()))
@@ -181,10 +180,10 @@ def train_lstm(
 		for i in range(cnt):			# for each document
 			org_title = ' '.join([id2w[wid] for wid in org_title_vec[i]])
 			tcf_gen_title = ' '.join([id2w[np.argmax(d)] for d in tcf_output[:, i, :]])
-			body = '\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
+			body = '\n\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
 
 			fout = open('./data/Sample-output-Keras/out-%s%d.txt' % (dataset_name, i), 'w')
-			fout.write(('Title:\n%s\nContent:\n%s\nTeacher Forced Generated Title:\n%s\n' % (org_title, body, tcf_gen_title)).encode('utf-8'))
+			fout.write(('Title:\n%s\nTeacher Forced Generated Title:\n%s\n' % (org_title, tcf_gen_title)).encode('utf-8'))
 			# fout.write('Generated Title Distribution:\n%s\n' % str(tcf_output[-1][i]))
 			fout.write('Distribution for each word in title:\n')
 			for j in range(Title_len):
@@ -205,7 +204,8 @@ def train_lstm(
 			for k in range(len(best_gen_title_list)):
 				(t, p) = best_gen_title_list[k]
 				_title = ' '.join(id2w[wid] for wid in t)
-				fout.write('No. %d\n%s%.6f\n' % (k+1, _title.encode('utf-8'), p))
+				fout.write('No. %d\n%s\n%.6f\n' % (k+1, _title.encode('utf-8'), p))
+			fout.write('Content:\n%s\n' % body.encode('utf-8'))
 
 			fout.close()
 

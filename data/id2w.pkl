@@ -53,7 +53,7 @@ aV\u9910
 aV\u6016
 aV\u8499
 aV\u90a1
-aVED\u000a
+aVED
 p2
 aV\u67af
 aV\u6db3

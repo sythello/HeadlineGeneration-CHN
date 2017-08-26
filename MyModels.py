@@ -28,20 +28,20 @@ def m_SeqNLL(y_true, y_pred):
     return sim_loss # + 10 * var_loss
 
 def m_NLL(y_true, y_pred):
-    # shape = (batch, vdim)
+    # shape = (batch, dim)
     sim_loss = K.mean(K.batch_dot(y_true, -K.log(y_pred + 1e-6), axes=1))
     return sim_loss
 
 # x = [seq, id]
-def gather_op(x):
-    seq = x[0]              # shape = (batch, words, vdim)
+def index_op(x):
+    seq = x[0]              # shape = (batch, words, dim)
     index = K.cast(x[1], dtype='int64')
     index = K.one_hot(index, seq.shape[1])      # shape = (batch, 1, words)
-    out = K.batch_dot(seq, index, axes=[1,2])   # shape = (batch, vdim, 1)
-    out = K.squeeze(out, axis=-1)               # shape = (batch, vdim)
+    out = K.batch_dot(seq, index, axes=[1,2])   # shape = (batch, dim, 1)
+    out = K.squeeze(out, axis=-1)               # shape = (batch, dim)
     return out
 
-def gather_output_shape(input_shape):
+def index_output_shape(input_shape):
     output_shape = (input_shape[0][0], input_shape[0][2])
     # print 'output_shape = %s' % str(output_shape)
     return output_shape
@@ -143,37 +143,34 @@ def BiGRU_Attention_Ref_AutoEncoder(id2v, Sen_len, Max_sen, Title_len, h_dim=300
     input_emb = L_e1(input_sen)
 
     # Treat the body as one sequence
-    encode_vec_1 = Bidirectional(GRU(h_dim, return_sequences=False), merge_mode='concat')(input_emb)
-    # shape = (batch, 2*h_dim)
+    encode_seq_1 = GRU(h_dim, return_sequences=True, go_backwards=False)(input_emb)
+    encode_seq_2 = GRU(h_dim, return_sequences=True, go_backwards=True)(input_emb)
+    encode_seq = concatenate([encode_seq_1, encode_seq_2], axis=-1)
+    # shape = (batch, Body_len, 2*h_dim)
 
-    # Treat the body as several sequences
-    encode_vec_2_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
-    # shape = (batch, Max_sen, Sen_len, h_dim)
-    encode_vec_2_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=False), merge_mode='concat'))(encode_vec_2_h0)
-    # shape = (batch, Max_sen, 2*h_dim)
-    encode_vec_2_h2 = Bidirectional(LSTM(h_dim, return_sequences=False), merge_mode='concat')(encode_vec_2_h1)
-    # shape = (batch, 2*h_dim)
+    # # Treat the body as several sequences
+    # encode_vec_2_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
+    # # shape = (batch, Max_sen, Sen_len, h_dim)
+    # encode_vec_2_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=False), merge_mode='concat'))(encode_vec_2_h0)
+    # # shape = (batch, Max_sen, 2*h_dim)
+    # encode_vec_2_h2 = Bidirectional(LSTM(h_dim, return_sequences=False), merge_mode='concat')(encode_vec_2_h1)
+    # # shape = (batch, 2*h_dim)
 
-    encode_vec = Dense(h_dim, activation='softmax')(concatenate([encode_vec_1, encode_vec_2_h2]))
-    # shape = (batch, h_dim)
-
-    encode_seq = core.RepeatVector(Title_len)(encode_vec)
-    # shape = (batch, Title_len, h_dim)
+    encode_seq = Dense(h_dim, activation='softmax')(encode_seq)
+    # shape = (batch, Body_len, h_dim)
 
     ref_sen = Input(shape=(Title_len,))
     L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)
     L_e2.trainable = False
     ref_emb = L_e2(ref_sen)
 
-    decode_in = concatenate([encode_seq, ref_emb], axis=-1)
+    # decode_in = concatenate([encode_seq, ref_emb], axis=-1)
 
-    # t2 = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t1, input_emb])
-    # t3 = Attention_GRU(h_dim, return_sequences=True, go_backwards=True)([t2, input_emb])
-    decode_seq = Attention_GRU(h_dim, return_sequences=True, go_backwards=False)([decode_in, input_emb])
+    decode_seq = Attention_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_seq])
     # shape = (batch, Title_len, h_dim)
 
     step_id = Input(shape=(1,))
-    step_vec = Lambda(gather_op, output_shape=gather_output_shape)([decode_seq, step_id])
+    step_vec = Lambda(index_op, output_shape=index_output_shape)([decode_seq, step_id])
 
     output_dstrb = Dense(vocab_size, activation='softmax')(step_vec)
 
@@ -182,4 +179,41 @@ def BiGRU_Attention_Ref_AutoEncoder(id2v, Sen_len, Max_sen, Title_len, h_dim=300
     model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb])
     return model, model_show
 
+def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15, h_dim=300):
+    vocab_size = len(id2v)
+    Body_len = Sen_len * Max_sen
 
+    input_sen = Input(shape=(Body_len,))
+    L_e1 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=False, input_length=Body_len)
+    L_e1.trainable = False
+    input_emb = L_e1(input_sen)
+
+    # Treat the body as several sequences
+    encode_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
+    # shape = (batch, Max_sen, Sen_len, h_dim)
+    encode_h0_enc = TimeDistributed(GRU(h_dim, return_sequences=True))(encode_h0)
+    # encode_h0_enc = Dense(h_dim, activation='softmax')(encode_h0_enc)
+    # shape = (batch, Max_sen, Sen_len, h_dim)
+    encode_h1 = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h0_enc)
+    # shape = (batch, Max_sen, h_dim)
+    encode_h1_enc = GRU(h_dim, return_sequences=True)(encode_h1)
+    # encode_h1_enc = Dense(h_dim, activation='softmax')(encode_h1_enc)
+    # shape = (batch, Max_sen, h_dim)
+
+    ref_sen = Input(shape=(Title_len,))
+    L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)
+    L_e2.trainable = False
+    ref_emb = L_e2(ref_sen)
+
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h1_enc, encode_h0_enc])
+    # shape = (batch, Title_len, h_dim)
+
+    step_id = Input(shape=(1,))
+    step_vec = Lambda(index_op, output_shape=index_output_shape)([decode_seq, step_id])
+
+    output_dstrb = Dense(vocab_size, activation='softmax')(step_vec)
+
+    model = Model(inputs=[input_sen, ref_sen, step_id], outputs=output_dstrb)
+    model.compile(optimizer='adam', loss=m_NLL)
+    # model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb])
+    return model, None
