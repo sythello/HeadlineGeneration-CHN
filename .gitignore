@@ -2,5 +2,8 @@ data/Raw_*
 data/Fmt_*
 data/Wid_*
 data/UTF8_Raw_data/*
+data/id2v.pkl
+data/id2w.pkl
+data/w2id.pkl
 *.zip
 *.pyc

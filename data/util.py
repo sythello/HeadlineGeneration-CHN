@@ -54,7 +54,7 @@ def prepare_data_3dto2d(ss, maxlen):
 # title, body: (batch, words)
 def load_data(path, data_set_size=240000):
     full_set = [[], []]
-    for dirpath, dirnames, filenames in list(os.walk(path)):
+    for dirpath, dirnames, filenames in reversed(list(os.walk(path))):
         for fnm in filenames:
             if fnm[-4:] != '.txt':  # Not a txt file
                 continue

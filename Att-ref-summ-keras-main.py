@@ -127,7 +127,7 @@ def train_lstm(
 		if os.path.isfile('Att-ref-summ-keras-main.pkl'):
 			model.set_weights(Loadweights('Att-ref-summ-keras-main.pkl'))
 		for e in range(max_epochs):
-			for i in range(172, blocks):
+			for i in range(0, blocks):
 				print 'Block %d/%d' % (i, blocks)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
 						  y=get_labels(t_onehot, i*block_size, (i+1)*block_size),\
