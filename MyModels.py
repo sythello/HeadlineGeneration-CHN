@@ -191,8 +191,9 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     # Treat the body as several sequences
     encode_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
     # shape = (batch, Max_sen, Sen_len, h_dim)
-    encode_h0_enc = TimeDistributed(GRU(h_dim, return_sequences=True))(encode_h0)
-    # encode_h0_enc = Dense(h_dim, activation='softmax')(encode_h0_enc)
+    encode_h0_enc = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat'))(encode_h0)
+    encode_h0_enc = Dense(h_dim, activation='softmax')(encode_h0_enc)
+    encode_h0_enc_masked = Masking()(encode_h0_enc)
     # shape = (batch, Max_sen, Sen_len, h_dim)
     encode_h1 = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h0_enc)
     # shape = (batch, Max_sen, h_dim)
@@ -205,7 +206,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     L_e2.trainable = False
     ref_emb = L_e2(ref_sen)
 
-    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h1_enc, encode_h0_enc])
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h1_enc, encode_h0_enc_masked])
     # shape = (batch, Title_len, h_dim)
 
     step_id = Input(shape=(1,))

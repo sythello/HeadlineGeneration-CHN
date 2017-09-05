@@ -476,10 +476,7 @@ class Attention_2H_GRU(Layer):
             return (input_shape[0], self.units)
 
     def compute_mask(self, inputs, mask):
-        if self.return_sequences:
-            return mask
-        else:
-            return None
+        return None
 
     def build(self, input_shape):
         if not isinstance(input_shape, list):
@@ -568,7 +565,7 @@ class Attention_2H_GRU(Layer):
         self.built = True
 
     def call(self, inputs, mask=None, initial_state=None, training=None):
-        constants = self.get_constants(inputs, training=None)           # [dp_mask, rec_dp_mask, att_sens, att_words]
+        constants = self.get_constants(inputs, mask, training=None)         # [dp_mask, rec_dp_mask, att_sens, att_words, att_words_mask]
         preprocessed_input = self.preprocess_input(inputs, training=None)
         input_shape = K.int_shape(inputs[0])
 
@@ -614,7 +611,7 @@ class Attention_2H_GRU(Layer):
             # return inputs
             raise NotImplementedError
 
-    def get_constants(self, inputs, training=None):
+    def get_constants(self, inputs, mask, training=None):
         constants = []
         if self.implementation != 0 and 0 < self.dropout < 1:
             raise NotImplementedError
@@ -646,8 +643,7 @@ class Attention_2H_GRU(Layer):
         else:
             constants.append([K.cast_to_floatx(1.) for _ in range(3)])
 
-        constants.append(inputs[1])
-        constants.append(inputs[2])
+        constants += [inputs[1], inputs[2], mask[2]]
         return constants
 
     def get_initial_states(self, inputs):
@@ -665,6 +661,8 @@ class Attention_2H_GRU(Layer):
         rec_dp_mask = states[2]
         att_sens = states[3]    # hidden states for sens (high layer)
         att_words = states[4]   # hiddem states for words (low layer)
+        att_words_mask = states[5]  # mask for 'att_words'
+
         # if self.implementation == 2:
         #     matrix_x = K.dot(inputs * dp_mask[0], self.kernel)
         #     if self.use_bias:
@@ -714,7 +712,8 @@ class Attention_2H_GRU(Layer):
         alpha = softmax(alpha, axis=-1)
         alpha = K.expand_dims(K.expand_dims(alpha))         # alpha = (batch, sens, 1, 1)
         beta = K.batch_dot(h_tm1, att_words, axes=[1,3])    # beta = (batch, sens, timesteps)
-        beta = softmax(beta, axis=-1)
+        beta = K.exp(beta) * att_words_mask
+        beta = beta / K.sum(beta, axis=-1, keepdims=True)
         beta = K.expand_dims(beta)                          # beta = (batch, sens, timesteps, 1)
         c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
         c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)

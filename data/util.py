@@ -52,7 +52,7 @@ def prepare_data_3dto2d(ss, maxlen):
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
 # title, body: (batch, words)
-def load_data(path, data_set_size=240000):
+def load_data(path, data_set_size=200000):
     full_set = [[], []]
     for dirpath, dirnames, filenames in reversed(list(os.walk(path))):
         for fnm in filenames:

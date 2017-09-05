@@ -1,9 +1,8 @@
 data/Raw_*
-data/Fmt_*
-data/Wid_*
-data/UTF8_Raw_data/*
-data/id2v.pkl
-data/id2w.pkl
-data/w2id.pkl
+data/*-based/Fmt_*
+data/*-based/Wid_*
+data/*-based/UTF8_Raw_*
+data/*-based/*.pkl
 *.zip
 *.pyc
+*.syn0.npy

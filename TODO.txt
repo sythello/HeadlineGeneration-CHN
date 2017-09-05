@@ -1,6 +1,3 @@
-Modify the attention model
-Generate document summaries for the content of each news. ==> Raw_data_summ/*
-Raw_data_summ ==> Fmt_data_summ, each summary in a line.
-Fmt_data_summ ==> Wid_data_summ, 2d body (7, summ_words)
-Model: 2-hierarchy encoder, decoder with 1-hierarchy attention (flatten input)
-Model: 2-hierarchy encoder, decoder with 2-hierarchy attention
+Retrain w2v
+Use sentences in content instead of summs
+Try segmentation
