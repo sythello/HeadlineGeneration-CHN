@@ -708,16 +708,21 @@ class Attention_2H_GRU(Layer):
         # h_tm1 = (batch, dim)
         # att_sens = (batch, sens, dim)
         # att_words = (batch, sens, timesteps, dim)
-        alpha = K.batch_dot(h_tm1, att_sens, axes=[1,2])    # alpha = (batch, sens)
-        alpha = softmax(alpha, axis=-1)
-        alpha = K.expand_dims(K.expand_dims(alpha))         # alpha = (batch, sens, 1, 1)
-        beta = K.batch_dot(h_tm1, att_words, axes=[1,3])    # beta = (batch, sens, timesteps)
-        beta = K.exp(beta) * att_words_mask
+        _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
+        _h_tm1 = K.expand_dims(h_tm1, axis=1)               # h_tm1 = (batch, 1, dim)
+
+        alpha = K.batch_dot(att_sens, _h_tm1, axes=[2,2])   # alpha = (batch, sens, 1)
+        alpha = softmax(alpha, axis=1)
+        alpha = K.expand_dims(alpha)                        # alpha = (batch, sens, 1, 1)
+
+        _aw = K.reshape(att_words, shape=(-1, _shp[1] * _shp[2], _shp[3]))         # _aw = (batch, sens * timesteps, dim)
+        beta = K.batch_dot(_aw, _h_tm1, axes=[2,2])             # beta = (batch, sens * timesteps, 1)
+        beta = K.reshape(beta, shape=(-1, _shp[1], _shp[2]))    # beta = (batch, sens, timesteps)
+        beta = K.exp(beta) * K.cast(att_words_mask, dtype='float32')
         beta = beta / K.sum(beta, axis=-1, keepdims=True)
         beta = K.expand_dims(beta)                          # beta = (batch, sens, timesteps, 1)
         c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
         c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)
-        # TODO: add mask
 
         x_z = inputs[:, :self.units]
         x_r = inputs[:, self.units: 2 * self.units]

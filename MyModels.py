@@ -34,11 +34,11 @@ def m_NLL(y_true, y_pred):
 
 # x = [seq, id]
 def index_op(x):
-    seq = x[0]              # shape = (batch, words, dim)
+    seq = x[0]              # shape = (batch, timesteps, dim)
     index = K.cast(x[1], dtype='int64')
-    index = K.one_hot(index, seq.shape[1])      # shape = (batch, 1, words)
-    out = K.batch_dot(seq, index, axes=[1,2])   # shape = (batch, dim, 1)
-    out = K.squeeze(out, axis=-1)               # shape = (batch, dim)
+    index = K.one_hot(index, K.int_shape(seq)[1])   # shape = (batch, 1, timesteps)
+    out = K.batch_dot(seq, index, axes=[1,2])       # shape = (batch, dim, 1)
+    out = K.squeeze(out, axis=-1)                   # shape = (batch, dim)
     return out
 
 def index_output_shape(input_shape):
@@ -205,6 +205,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)
     L_e2.trainable = False
     ref_emb = L_e2(ref_sen)
+    # (batch, Title_len, wv_dim)
 
     decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h1_enc, encode_h0_enc_masked])
     # shape = (batch, Title_len, h_dim)

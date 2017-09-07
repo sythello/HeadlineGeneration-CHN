@@ -132,7 +132,7 @@ def train_lstm(
 		if os.path.isfile(param_file_name):
 			model.set_weights(Loadweights(param_file_name))
 		for e in range(max_epochs):
-			for i in range(80, blocks):
+			for i in range(25, blocks):
 				print 'Block %d/%d' % (i, blocks)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
 						  y=get_labels(t_onehot, i*block_size, (i+1)*block_size),\
