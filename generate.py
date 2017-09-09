@@ -4,7 +4,6 @@ import numpy as np
 import random
 
 from data.util import *
-from util import *
 
 def Generate(
     model,

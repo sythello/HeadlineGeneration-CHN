@@ -1,3 +1,9 @@
 Retrain w2v
 Use sentences in content instead of summs
 Try segmentation
+(ok)
+
+1 Wid_data file (ok)
+tqdm (ok)
+Reduce Mem cost at 'd2_onehot' (ok)
+

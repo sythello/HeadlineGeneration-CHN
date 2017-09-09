@@ -3,6 +3,7 @@
 import os
 import re, string
 import jieba
+import tqdm
 from gensim.models import *
 
 ######
@@ -101,49 +102,50 @@ def get_sentence_list(psg, segm=True):
 #         res = [' '.join(chars)]
 #     return res
 
-if not os.path.exists('./%s' % output_dir):
-    os.mkdir('./%s' % output_dir)
+if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
 
-for dirpath, dirnames, filenames in os.walk('./' + input_dir):
+input_file_list = []
+for dirpath, dirnames, filenames in os.walk(input_dir):
     for fnm in filenames:
-        fin = open('%s/%s' % (dirpath, fnm), 'r')
-        lines = fin.readlines()
-        fin.close()
-        
-        # Deal with title
-        s = ''
-        lid = 0
-        for lid in range(1, len(lines)):
-            if lines[lid].find('Content:') >= 0:
-                break
-            s += lines[lid].decode('gb18030', 'ignore').strip()
+        input_file_list.append((dirpath, fnm))
 
-        hd = get_sentence_list(s)
-        lid += 1
+for dirpath, fnm in tqdm.tqdm(input_file_list):
+    fin = open('%s/%s' % (dirpath, fnm), 'r')
+    lines = fin.readlines()
+    fin.close()
+    
+    # Deal with title
+    s = ''
+    lid = 0
+    for lid in range(1, len(lines)):
+        if lines[lid].find('Content:') >= 0:
+            break
+        s += lines[lid].decode('gb18030', 'ignore').strip()
 
-        # Deal with content
-        s = ''
-        for lid in range(lid, len(lines)):
-            s += lines[lid].decode('gb18030', 'ignore').strip()
+    hd = get_sentence_list(s)
+    lid += 1
 
-        ctnt = get_sentence_list(s)
-        # ctnt = list of all sentences
+    # Deal with content
+    s = ''
+    for lid in range(lid, len(lines)):
+        s += lines[lid].decode('gb18030', 'ignore').strip()
 
-        if len(ctnt) <= 0 or len(hd) <= 0:  # Malformed - maybe not a news file
-            continue
+    ctnt = get_sentence_list(s)
+    # ctnt = list of all sentences
 
-        # Output
-        if news_id % DIR_SZ == 0 and not os.path.exists('./%s/%d' % (output_dir, news_id / DIR_SZ)):
-            os.mkdir('./%s/%d' % (output_dir, news_id / DIR_SZ))
+    if len(ctnt) <= 0 or len(hd) <= 0:  # Malformed - maybe not a news file
+        continue
 
-        fout = open('./%s/%d/%d.txt' % (output_dir, news_id / DIR_SZ, news_id), 'w')
-        fout.write('Title:\n%s\nContent:\n' % ' '.join(hd[0]).encode('utf-8'))
-        for s in ctnt:
-            fout.write('%s\n' % ' '.join(s).encode('utf-8'))
-        fout.close()
+    # Output
+    if news_id % DIR_SZ == 0 and not os.path.exists('%s/%d' % (output_dir, news_id / DIR_SZ)):
+        os.mkdir('%s/%d' % (output_dir, news_id / DIR_SZ))
 
-        if news_id % DIR_SZ == 0:
-            print('Progress: %d' % news_id)
+    fout = open('%s/%d/%d.txt' % (output_dir, news_id / DIR_SZ, news_id), 'w')
+    fout.write('Title:\n%s\nContent:\n' % ' '.join(hd[0]).encode('utf-8'))
+    for s in ctnt:
+        fout.write('%s\n' % ' '.join(s).encode('utf-8'))
+    fout.close()
 
-        news_id += 1
+    news_id += 1
 

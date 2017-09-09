@@ -1,6 +1,7 @@
 import numpy as np
 import cPickle
 import os
+import tqdm
 
 from keras.utils.np_utils import *
 
@@ -52,45 +53,51 @@ def prepare_data_3dto2d(ss, maxlen):
 # Return: 3 batches, train, dev and test
 # Each batch: [0] = title, [1] = body
 # title, body: (batch, words)
-def load_data(path, data_set_size=200000):
-    full_set = [[], []]
-    for dirpath, dirnames, filenames in reversed(list(os.walk(path))):
-        for fnm in filenames:
-            if fnm[-4:] != '.txt':  # Not a txt file
-                continue
-            fin = open('%s/%s' % (dirpath, fnm), 'rb')
-            datas = cPickle.load(fin)
-            fin.close()
-            ######
-            #
-            # File Format:
-            # [title words], [(sen1 words), (sen2 words), ...]
-            #
-            ######
-            full_set[0].append(np.array(datas[0]).astype('int64'))
-            t = []
-            for s in datas[1]:
-                t.append(np.array(s).astype('int64'))
-            full_set[1].append(t)
+def load_data(fname, data_set_size=300000):
+    # full_set = [[], []]
+    # file_list = []
+    # for dirpath, dirnames, filenames in os.walk(path):
+    #     for fnm in filenames:
+    #         if fnm[-4:] != '.txt':  # Not a txt file
+    #             continue
+    #         file_list.append((dirpath, fnm))
+    #         if len(file_list) >= data_set_size:
+    #             break
+    #     if len(file_list) >= data_set_size:
+    #         break
 
-            if len(full_set[0]) >= data_set_size:
-                break
-        if len(full_set[0]) >= data_set_size:
-            break
+    # for dirpath, fnm in tqdm.tqdm(file_list):
+    #     fin = open('%s/%s' % (dirpath, fnm), 'rb')
+    #     datas = cPickle.load(fin)
+    #     fin.close()
+    #     ######
+    #     #
+    #     # File Format:
+    #     # [title words], [(sen1 words), (sen2 words), ...]
+    #     #
+    #     ######
+    #     full_set[0].append(np.array(datas[0]).astype('int64'))
+    #     t = []
+    #     for s in datas[1]:
+    #         t.append(np.array(s).astype('int64'))
+    #     full_set[1].append(t)
+
+    full_set = cPickle.load(open(fname, 'r'))   # (nsamples, 2(title_id, ctnt_id))
+    samples = min(len(full_set), data_set_size)
 
     train = [[],[]]
     dev = [[],[]]
     test = [[],[]]
-    for i in range(len(full_set[0])):
+    for i in tqdm.tqdm(range(samples)):
         if i % 10 < 8:
-            train[0].append(full_set[0][i])
-            train[1].append(full_set[1][i])
+            train[0].append(full_set[i][0])
+            train[1].append(full_set[i][1])
         elif i % 10 == 8:
-            dev[0].append(full_set[0][i])
-            dev[1].append(full_set[1][i])
+            dev[0].append(full_set[i][0])
+            dev[1].append(full_set[i][1])
         else:
-            test[0].append(full_set[0][i])
-            test[1].append(full_set[1][i])
+            test[0].append(full_set[i][0])
+            test[1].append(full_set[i][1])
 
     return train, dev, test
 
@@ -104,7 +111,11 @@ def Embed(mat, id2v):
     print('new_tensor.shape = ' + str(new_tensor.shape))
     return new_tensor
 
-def d2_onehot(sens, vocab_size):
+def to_onehot_1d(sen, vocab_size):
+    sen_onehot = to_categorical(sen, vocab_size)
+    return sen_onehot
+
+def to_onehot_2d(sens, vocab_size):
     nsamples = sens.shape[0]
     slen = sens.shape[1]
     sens_onehot = to_categorical(sens.reshape(nsamples * slen), vocab_size).reshape(nsamples, slen, vocab_size)

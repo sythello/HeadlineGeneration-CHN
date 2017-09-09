@@ -24,7 +24,6 @@ import random
 from gensim.models import *
 
 from data.util import *
-from util import *
 from MyModels import *
 from generate import *
 
@@ -47,8 +46,8 @@ def train_lstm(
 
 	param_file_name = '%s/%s.%s.pkl' % (data_dir, prog_name, extra_name)
 	print 'Loading data'
-	input_dir = '%s/Wid_data_divsens' % data_dir
-	train, valid, test = load_data(input_dir) if options['mode'] == 'train' else load_data(input_dir, 100)
+	input_file = '%s/Wid_data_divsens/wid_list.pkl' % data_dir
+	train, valid, test = load_data(input_file) if options['mode'] == 'train' else load_data(input_file, 100)
 	id2v = cPickle.load(open('%s/id2v.pkl' % data_dir, 'r'))
 	id2v = np.matrix(id2v)
 
@@ -86,11 +85,12 @@ def train_lstm(
 	ts_b = prepare_data_3dto2d(test[1], Max_len)[0]
 	# shape = (batch, words)
 
-	t_onehot = d2_onehot(t, vocab_size)
-	v_t_onehot = d2_onehot(v_t, vocab_size)
+	# t_onehot = to_onehot_2d(t, vocab_size)
+	# v_t_onehot = to_onehot_2d(v_t, vocab_size)
 	# shape = (batch, words, vocab_size)
 
 	def get_input_data(body_list, title_list, start_i=None, end_i=None, Title_len=Title_len):
+		# body|title_list shape = (batch, timesteps)
 		# Return: [[b0, t0, 0], [b1, t1, 0], ..., [b0, t0, 1], [b1, t1, 1], ..., [b0, t0, Title_len-1], ...]
 
 		if start_i == None:
@@ -110,19 +110,20 @@ def train_lstm(
 		comb_list = [_b, _t, _wpos]
 		return comb_list
 
-	def get_labels(title_onehot_list, start_i=None, end_i=None, Title_len=Title_len):
+	def get_labels(title_list, start_i=None, end_i=None, Title_len=Title_len, vocab_size=vocab_size):
+		# title_list shape = (batch, timesteps)
 		# Return: [t_1h[:, 0], t_1h[:, 1], ..., t_1h[:, Title_len-1]]
 
 		if start_i == None:
 			start_i = 0
 		if end_i == None:
-			end_i = len(title_onehot_list)
+			end_i = len(title_list)
 
 		r_list = []
 		for j in range(Title_len):
-			r_list += list(title_onehot_list[start_i : end_i, j+1])	# Want the distribution of word j+1 at position j
+			r_list += list(title_list[start_i : end_i, j+1])	# Want the distribution of word j+1 at position j
 
-		return np.array(r_list)
+		return to_onehot_1d(np.array(r_list), vocab_size)
 
 	if options['mode'] == 'train':
 		block_size = 1000
@@ -135,15 +136,15 @@ def train_lstm(
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i, blocks)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
-						  y=get_labels(t_onehot, i*block_size, (i+1)*block_size),\
+						  y=get_labels(t, i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
-						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t_onehot, i*v_block_size, (i+1)*v_block_size)],\
+						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t, i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
 				Saveweights(model, param_file_name)
 	elif options['mode'] == 'debug':
 		train_input_data = get_input_data(b, t)
-		train_labels = get_labels(t_onehot)
+		train_labels = get_labels(t)
 		print 'input shape = %s' % str((train_input_data[0].shape, train_input_data[1].shape, train_input_data[2].shape))
 		print 'labels shape = %s' % str(train_labels.shape)
 		# model.fit(x=train_input_data,\

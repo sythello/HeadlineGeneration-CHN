@@ -2,6 +2,7 @@ import math
 import numpy as np
 import gzip, cPickle
 import os
+import tqdm
 from gensim.models import *
 
 rng = np.random
@@ -36,25 +37,28 @@ def regWord(w):
 
 TEST_NUM = 100
 fid = 0
-for dirpath, dirnames, filenames in os.walk('./' + input_dir):
+
+input_file_list = []
+for dirpath, dirnames, filenames in os.walk(input_dir):
     for fnm in filenames:
-        fo = open('%s/%s' % (dirpath, fnm), 'r')
-        lines = fo.readlines()
-        fo.close()
+        input_file_list.append((dirpath, fnm))
 
-        if len(lines) < 4:     # Malformed
-            continue
-        title = lines[1].decode('utf-8').strip().split(' ')
-        ctnt = ' '.join([lines[i].decode('utf-8').strip() for i in range(3, len(lines))]).split(' ')
+for dirpath, fnm in tqdm.tqdm(input_file_list):
+    fo = open('%s/%s' % (dirpath, fnm), 'r')
+    lines = fo.readlines()
+    fo.close()
 
-        for wd in title:
-            regWord(wd)
-        for wd in ctnt:
-            regWord(wd)
+    if len(lines) < 4:     # Malformed
+        continue
+    title = lines[1].decode('utf-8').strip().split(' ')
+    ctnt = ' '.join([lines[i].decode('utf-8').strip() for i in range(3, len(lines))]).split(' ')
 
-        if fid % 5000 == 0:
-            print('Progress: %d' % fid)
-        fid += 1
+    for wd in title:
+        regWord(wd)
+    for wd in ctnt:
+        regWord(wd)
+
+    fid += 1
 
     #     if fid >= TEST_NUM:
     #         break
