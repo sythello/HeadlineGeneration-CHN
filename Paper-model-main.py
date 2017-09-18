@@ -44,7 +44,7 @@ def train_lstm(
 	prog_name = 'Paper-model-main'
 	extra_name = 'orig-sens.mask'
 
-	param_file_name = '%s/%s.%s.pkl' % (data_dir, prog_name, extra_name)
+	param_file_name = '%s/%s.%s.h5' % (data_dir, prog_name, extra_name)
 	print 'Loading data'
 	input_file = '%s/Wid_data_divsens/wid_list.pkl' % data_dir
 	train, valid, test = load_data(input_file) if options['mode'] == 'train' else load_data(input_file, 100)
@@ -130,8 +130,8 @@ def train_lstm(
 		blocks = train_n / block_size
 		v_block_size = valid_n / blocks
 
-		if os.path.isfile(param_file_name):
-			model.set_weights(Loadweights(param_file_name))
+		# if os.path.isfile(param_file_name):
+		# 	model = load_model(param_file_name)
 		for e in range(max_epochs):
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i, blocks)
@@ -159,7 +159,7 @@ def train_lstm(
 				  epochs=1)
 		Saveweights(model, param_file_name)
 	else:
-	    model.set_weights(Loadweights(param_file_name))
+	    model = load_model(param_file_name)
 
 	# open('model_weights.txt', 'w').write(str(model.get_weights()))
 	# open('model_config.txt', 'w').write(str(model.get_config()))
@@ -227,8 +227,8 @@ if __name__ == '__main__':
     ap.add_argument('-dim_proj', type=int, default=300, help='word embeding dimension and HLSTM number of hidden units.')
     ap.add_argument('-max_epochs', type=int, default=1, help='The maximum number of epoch to run')
     ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
-    ap.add_argument('-batch_size', type=int, default=300, help='The batch size during training.')
-    ap.add_argument('-valid_batch_size', type=int, default=300, help='The batch size used for validation/test set.')
+    ap.add_argument('-batch_size', type=int, default=100, help='The batch size during training.')
+    ap.add_argument('-valid_batch_size', type=int, default=100, help='The batch size used for validation/test set.')
     ap.add_argument('-mode', type=str, default='debug', help='"train", "test" or "debug"')
 
     args = vars(ap.parse_args())

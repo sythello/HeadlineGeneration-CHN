@@ -7,3 +7,4 @@ Try segmentation
 tqdm (ok)
 Reduce Mem cost at 'd2_onehot' (ok)
 
+Use model.save() instead of cPickle.dump()

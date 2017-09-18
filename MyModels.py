@@ -188,17 +188,21 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     L_e1.trainable = False
     input_emb = L_e1(input_sen)
 
+    encoder_depth_1 = 3
+
     # Treat the body as several sequences
-    encode_h0 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
+    encode_h1 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
     # shape = (batch, Max_sen, Sen_len, h_dim)
-    encode_h0_enc = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat'))(encode_h0)
-    encode_h0_enc = Dense(h_dim, activation='softmax')(encode_h0_enc)
-    encode_h0_enc_masked = Masking()(encode_h0_enc)
+    for i in range(encoder_depth_1):
+        encode_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat'))(encode_h1)
+
+    encode_h1 = Dense(h_dim, activation='softmax')(encode_h1)
+    encode_h1_masked = Masking()(encode_h1)
     # shape = (batch, Max_sen, Sen_len, h_dim)
-    encode_h1 = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h0_enc)
+    encode_h1_last = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
     # shape = (batch, Max_sen, h_dim)
-    encode_h1_enc = GRU(h_dim, return_sequences=True)(encode_h1)
-    # encode_h1_enc = Dense(h_dim, activation='softmax')(encode_h1_enc)
+    encode_h2 = GRU(h_dim, return_sequences=True)(encode_h1_last)
+    # encode_h2 = Dense(h_dim, activation='softmax')(encode_h2)
     # shape = (batch, Max_sen, h_dim)
 
     ref_sen = Input(shape=(Title_len,))
@@ -207,7 +211,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     ref_emb = L_e2(ref_sen)
     # (batch, Title_len, wv_dim)
 
-    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h1_enc, encode_h0_enc_masked])
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1_masked])
     # shape = (batch, Title_len, h_dim)
 
     step_id = Input(shape=(1,))

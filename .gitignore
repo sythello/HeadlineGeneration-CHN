@@ -3,6 +3,7 @@ data/*-based/Fmt_*
 data/*-based/Wid_*
 data/*-based/UTF8_Raw_*
 data/*-based/*.pkl
+data/*-based/*.h5
 *.zip
 *.pyc
 *.syn0.npy

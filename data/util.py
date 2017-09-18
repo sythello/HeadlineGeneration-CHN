@@ -4,6 +4,7 @@ import os
 import tqdm
 
 from keras.utils.np_utils import *
+from keras.models import *
 
 # This is data/util.py
 
@@ -130,8 +131,10 @@ def k_argmax(v, k=10):
     return k_argmax_
 
 def Saveweights(model, fname):
-    cPickle.dump(model.get_weights(), open(fname, 'w'))
+    # cPickle.dump(model.get_weights(), open(fname, 'w'))
+    model.save(fname)
 
-def Loadweights(fname):
-    return cPickle.load(open(fname, 'r'))
-
+def Loadweights(model, fname):
+    model.set_weights(cPickle.load(open(fname, 'r')))
+    # m = load_model(fname)
+    # return m
