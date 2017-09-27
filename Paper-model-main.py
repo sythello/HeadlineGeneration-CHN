@@ -42,9 +42,10 @@ def train_lstm(
 
 	data_dir = 'data/Word-based'
 	prog_name = 'Paper-model-main'
-	extra_name = 'orig-sens.mask'
+	extra_name = ['model', 'model_show']
 
-	param_file_name = '%s/%s.%s.h5' % (data_dir, prog_name, extra_name)
+	model_file_name = '%s/%s.%s.h5' % (data_dir, prog_name, extra_name[0])
+	model_show_file_name = '%s/%s.%s.h5' % (data_dir, prog_name, extra_name[1])
 	print 'Loading data'
 	input_file = '%s/Wid_data_divsens/wid_list.pkl' % data_dir
 	train, valid, test = load_data(input_file) if options['mode'] == 'train' else load_data(input_file, 100)
@@ -130,8 +131,9 @@ def train_lstm(
 		blocks = train_n / block_size
 		v_block_size = valid_n / blocks
 
-		# if os.path.isfile(param_file_name):
-		# 	model = load_model(param_file_name)
+		if os.path.isfile(model_file_name):
+			model = load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
+			model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 		for e in range(max_epochs):
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i, blocks)
@@ -141,7 +143,8 @@ def train_lstm(
 						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t, i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
-				Saveweights(model, param_file_name)
+				Saveweights(model, model_file_name)
+				Saveweights(model_show, model_show_file_name)
 	elif options['mode'] == 'debug':
 		train_input_data = get_input_data(b, t)
 		train_labels = get_labels(t)
@@ -156,10 +159,12 @@ def train_lstm(
 				  y=train_labels,\
 				  batch_size=batch_size,\
 				  validation_data=[train_input_data, train_labels],\
-				  epochs=1)
-		Saveweights(model, param_file_name)
+				  epochs=max_epochs)
+		Saveweights(model, model_file_name)
+		Saveweights(model_show, model_show_file_name)
 	else:
-	    model = load_model(param_file_name)
+		model = load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
+		model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 
 	# open('model_weights.txt', 'w').write(str(model.get_weights()))
 	# open('model_config.txt', 'w').write(str(model.get_config()))
@@ -168,7 +173,7 @@ def train_lstm(
 	id2w = cPickle.load(open('%s/id2w.pkl' % data_dir, 'r'))
 	w2id = cPickle.load(open('%s/w2id.pkl' % data_dir, 'r'))
 
-	show_cnt = 10
+	show_cnt = 1
 	# train_gen_title = model.predict(b[:show_cnt])
 	# valid_gen_title = model.predict(v_b[:show_cnt])
 	# test_gen_title = model.predict(ts_b[:show_cnt])
@@ -176,16 +181,33 @@ def train_lstm(
 	# Generate(model, ts_b[0], vocab_size, w2id, id2w, beam_size=2, n_best=2)
 	# quit()
 
-	def get_output(org_title_vec, org_body_vec, input_data, ref_data, cnt, dataset_name):
-		# model_show outputs = [input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb]
-		# layer_names = ['input_emb', 'encode_seq', 'ref_emb', 'decode_seq', 'step_vec', 'output_dstrb']
+	def get_output(org_title_vec, org_body_vec, body_data, ref_data, cnt, dataset_name):
+		# model_show outputs = [input_emb, encode_h1, encode_h2, ref_emb, decode_seq, step_vec, output_dstrb]
+		layer_names = ['input_emb', 'encode_h1', 'encode_h2', 'ref_emb', 'decode_seq', 'step_vec', 'output_dstrb']
 		cnt = min(len(org_title_vec), cnt)
-		tcf_output = np.array([model.predict([input_data, ref_data, np.array([j] * cnt)]) for j in range(Title_len)])
-		# shape = (word_pos, samples, dstrb)
+		_body = list(body_data) * Title_len 		# [<cnt samples for index 0>, <cnt samples for index 1>, ...]
+		_ref = list(ref_data) * Title_len 			# [<cnt samples for index 0>, <cnt samples for index 1>, ...]
+		_step_id = [i for i in range(Title_len) for _ in range(cnt)]
 
-		for i in range(cnt):			# for each document
+		inputs = [np.array(_body), np.array(_ref), np.array(_step_id)]
+
+		# print '--- inputs:'
+		# print inputs
+
+		model_output = model.predict(inputs)
+		model_output = np.array(model_output).reshape(cnt, Title_len, -1)
+		# shape = (cnt, Title_len, dstrb)
+
+		_all_layer_output = model_show.predict(inputs)
+		# each layer: (cnt * Title_len, **args)
+		all_layer_output = []
+		for l in _all_layer_output:
+			all_layer_output.append(np.array(l).reshape(cnt, Title_len, *l.shape[1:]))
+		# each layer: (cnt, Title_len, **args)
+
+		for i in range(cnt):			# for each sample
 			org_title = ' '.join([id2w[wid] for wid in org_title_vec[i]])
-			tcf_gen_title = ' '.join([id2w[np.argmax(d)] for d in tcf_output[:, i, :]])
+			tcf_gen_title = ' '.join([id2w[np.argmax(d)] for d in model_output[i]])
 			body = '\n\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
 
 			if not os.path.exists('%s/Sample-output-Keras' % data_dir):
@@ -193,22 +215,21 @@ def train_lstm(
 
 			fout = open('%s/Sample-output-Keras/out-%s%d.txt' % (data_dir, dataset_name, i), 'w')
 			fout.write(('Title:\n%s\nTeacher Forced Generated Title:\n%s\n' % (org_title, tcf_gen_title)).encode('utf-8'))
-			# fout.write('Generated Title Distribution:\n%s\n' % str(tcf_output[-1][i]))
 			fout.write('Distribution for each word in title:\n')
 			for j in range(Title_len):
-				dst = tcf_output[j, i]	# distribution for j-th word
+				dst = model_output[i, j]	# distribution for j-th word
 				k_argm = k_argmax(dst, 10)
 				fout.write('%d:\n' % (j+1))
 				for k in k_argm:	# k is the word_id
 					fout.write(('%s: %.6lf\n' % (id2w[k], dst[k])).encode('utf-8'))
 				fout.write('\n')
 
-			# fout.write('\nOutput of each layer:\n')
-			# for j in range(len(layer_names)):
-			# 	fout.write('%s:\n' % layer_names[j])
-			# 	fout.write(str(tcf_output[j][i]) + '\n')
+			fout.write('\nOutput of each layer:\n')
+			for j in range(len(layer_names)):	# for each layer
+				fout.write('%s:\n' % layer_names[j])
+				fout.write(str(all_layer_output[j][i]) + '\n')
 
-			best_gen_title_list = Generate(model, input_data[i], vocab_size, w2id, id2w, Title_len=Title_len, beam_size=10, n_best=10)
+			best_gen_title_list = Generate(model, body_data[i], vocab_size, w2id, id2w, Title_len=Title_len)
 			fout.write('\nGenerated Titles:\n')
 			for k in range(len(best_gen_title_list)):
 				(t, p) = best_gen_title_list[k]

@@ -336,7 +336,7 @@ class Attention_GRU(Layer):
         # h_tm1 = (batches, dim)
         # att_seq = (batched, timesteps, dim)
         a = K.batch_dot(h_tm1, att_seq, axes=[1,2])   # a = (batch, timesteps)
-        a = K.softmax(a)            # TODO: add mask for att_seq here
+        a = K.softmax(a)
         c = K.batch_dot(att_seq, a, axes=[1,1])
 
         x_z = inputs[:, :self.units]
@@ -544,23 +544,75 @@ class Attention_2H_GRU(Layer):
             self.bias_h = None
 
         # Added parameters
-        # self.after_att_layers_cnt = 3    # You can tune this
+        self.att_layers_cnt = 3    # You can tune this
 
-        # self.after_att_kernel = self.add_weight((self.units, self.units * self.after_att_layers_cnt),
-        #                                 name='after_att_kernel',
-        #                                 initializer=self.kernel_initializer,
-        #                                 regularizer=self.kernel_regularizer,
-        #                                 constraint=self.kernel_constraint)
+        self.att_h1_kernel_list = []
+        self.att_h1_kernel_list.append(self.add_weight((self.units + self.att_w_dim, self.units),
+                                        name='att_h1_kernel_1',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
+        self.att_h1_kernel_list.append(self.add_weight((self.units, self.units),
+                                        name='att_h1_kernel_2',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
+        self.att_h1_kernel_list.append(self.add_weight((self.units, 1),
+                                        name='att_h1_kernel_3',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
 
-        # self.after_att_kernel_list = [self.after_att_kernel[:, self.units * i: self.units * (i + 1)] for i in range(self.after_att_layers_cnt)]
+        self.att_h1_bias_list = []
+        self.att_h1_bias_list.append(self.add_weight((self.units,),
+                                        name='att_h1_bias_1',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
+        self.att_h1_bias_list.append(self.add_weight((self.units,),
+                                        name='att_h1_bias_2',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
+        self.att_h1_bias_list.append(self.add_weight((1,),
+                                        name='att_h1_bias_3',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
 
-        # self.after_att_bias = self.add_weight((self.units * self.after_att_layers_cnt,),
-        #                                 name='after_att_bias',
-        #                                 initializer='zero',
-        #                                 regularizer=self.bias_regularizer,
-        #                                 constraint=self.bias_constraint)
+        self.att_h2_kernel_list = []
+        self.att_h2_kernel_list.append(self.add_weight((self.units + self.att_s_dim, self.units),
+                                        name='att_h2_kernel_1',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
+        self.att_h2_kernel_list.append(self.add_weight((self.units, self.units),
+                                        name='att_h2_kernel_2',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
+        self.att_h2_kernel_list.append(self.add_weight((self.units, 1),
+                                        name='att_h2_kernel_3',
+                                        initializer=self.kernel_initializer,
+                                        regularizer=self.kernel_regularizer,
+                                        constraint=self.kernel_constraint))
 
-        # self.after_att_bias_list = [self.after_att_bias[self.units * i: self.units * (i + 1)] for i in range(self.after_att_layers_cnt)]
+        self.att_h2_bias_list = []
+        self.att_h2_bias_list.append(self.add_weight((self.units,),
+                                        name='att_h2_bias_1',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
+        self.att_h2_bias_list.append(self.add_weight((self.units,),
+                                        name='att_h2_bias_2',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
+        self.att_h2_bias_list.append(self.add_weight((1,),
+                                        name='att_h2_bias_3',
+                                        initializer='zero',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint))
 
         self.built = True
 
@@ -662,65 +714,44 @@ class Attention_2H_GRU(Layer):
         att_sens = states[3]    # hidden states for sens (high layer)
         att_words = states[4]   # hiddem states for words (low layer)
         att_words_mask = states[5]  # mask for 'att_words'
-
-        # if self.implementation == 2:
-        #     matrix_x = K.dot(inputs * dp_mask[0], self.kernel)
-        #     if self.use_bias:
-        #         matrix_x = K.bias_add(matrix_x, self.bias)
-        #     matrix_inner = K.dot(h_tm1 * rec_dp_mask[0],
-        #                          self.recurrent_kernel[:, :2 * self.units])
-
-        #     x_z = matrix_x[:, :self.units]
-        #     x_r = matrix_x[:, self.units: 2 * self.units]
-        #     recurrent_z = matrix_inner[:, :self.units]
-        #     recurrent_r = matrix_inner[:, self.units: 2 * self.units]
-
-        #     z = self.recurrent_activation(x_z + recurrent_z)
-        #     r = self.recurrent_activation(x_r + recurrent_r)
-
-        #     x_h = matrix_x[:, 2 * self.units:]
-        #     recurrent_h = K.dot(r * h_tm1 * rec_dp_mask[0],
-        #                         self.recurrent_kernel[:, 2 * self.units:])
-        #     hh = self.activation(x_h + recurrent_h)
-        # else:
-        #     if self.implementation == 0:
-        #         x_z = inputs[:, :self.units]
-        #         x_r = inputs[:, self.units: 2 * self.units]
-        #         x_h = inputs[:, 2 * self.units:]
-        #     elif self.implementation == 1:
-        #         x_z = K.dot(inputs * dp_mask[0], self.kernel_z)
-        #         x_r = K.dot(inputs * dp_mask[1], self.kernel_r)
-        #         x_h = K.dot(inputs * dp_mask[2], self.kernel_h)
-        #         if self.use_bias:
-        #             x_z = K.bias_add(x_z, self.bias_z)
-        #             x_r = K.bias_add(x_r, self.bias_r)
-        #             x_h = K.bias_add(x_h, self.bias_h)
-        #     else:
-        #         raise ValueError('Unknown `implementation` mode.')
-        #     z = self.recurrent_activation(x_z + K.dot(h_tm1 * rec_dp_mask[0],
-        #                                               self.recurrent_kernel_z))
-        #     r = self.recurrent_activation(x_r + K.dot(h_tm1 * rec_dp_mask[1],
-        #                                               self.recurrent_kernel_r))
-
-        #     hh = self.activation(x_h + K.dot(r * h_tm1 * rec_dp_mask[2],
-        #                                      self.recurrent_kernel_h))
-
         # h_tm1 = (batch, dim)
         # att_sens = (batch, sens, dim)
         # att_words = (batch, sens, timesteps, dim)
-        _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
-        _h_tm1 = K.expand_dims(h_tm1, axis=1)               # h_tm1 = (batch, 1, dim)
 
-        alpha = K.batch_dot(att_sens, _h_tm1, axes=[2,2])   # alpha = (batch, sens, 1)
-        alpha = softmax(alpha, axis=1)
+
+        # _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
+        # _h_tm1 = K.expand_dims(h_tm1, axis=1)               # h_tm1 = (batch, 1, dim)
+
+        # alpha = K.batch_dot(att_sens, _h_tm1, axes=[2,2])   # alpha = (batch, sens, 1)
+        # alpha = softmax(alpha, axis=1)
+        # alpha = K.expand_dims(alpha)                        # alpha = (batch, sens, 1, 1)
+
+        # _aw = K.reshape(att_words, shape=(-1, _shp[1] * _shp[2], _shp[3]))         # _aw = (batch, sens * timesteps, dim)
+        # beta = K.batch_dot(_aw, _h_tm1, axes=[2,2])             # beta = (batch, sens * timesteps, 1)
+        # beta = K.reshape(beta, shape=(-1, _shp[1], _shp[2]))    # beta = (batch, sens, timesteps)
+        # beta = K.exp(beta) * K.cast(att_words_mask, dtype='float32')
+        # beta = beta / K.sum(beta, axis=-1, keepdims=True)
+        # beta = K.expand_dims(beta)                          # beta = (batch, sens, timesteps, 1)
+        # c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
+        # c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)
+
+        _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
+        _h_tm1 = K.expand_dims(h_tm1, axis=1)               # _h_tm1 = (batch, 1, dim)
+        _h_tm1 = K.tile(_h_tm1, (1, _shp[1], 1))             # _h_tm1 = (batch, sens, dim)
+
+        alpha = K.concatenate([_h_tm1, att_sens])           # alpha = (batch, sens, 2 * dim)
+        for i in range(self.att_layers_cnt):
+            alpha = K.relu(K.bias_add(K.dot(alpha, self.att_h2_kernel_list[i]), self.att_h2_bias_list[i]))
+                                                            # alpha = (batch, sens, 1)
         alpha = K.expand_dims(alpha)                        # alpha = (batch, sens, 1, 1)
 
-        _aw = K.reshape(att_words, shape=(-1, _shp[1] * _shp[2], _shp[3]))         # _aw = (batch, sens * timesteps, dim)
-        beta = K.batch_dot(_aw, _h_tm1, axes=[2,2])             # beta = (batch, sens * timesteps, 1)
-        beta = K.reshape(beta, shape=(-1, _shp[1], _shp[2]))    # beta = (batch, sens, timesteps)
-        beta = K.exp(beta) * K.cast(att_words_mask, dtype='float32')
-        beta = beta / K.sum(beta, axis=-1, keepdims=True)
-        beta = K.expand_dims(beta)                          # beta = (batch, sens, timesteps, 1)
+
+        _h_tm1 = K.expand_dims(_h_tm1, axis=2)
+        _h_tm1 = K.tile(_h_tm1, (1, 1, _shp[2], 1))
+        beta = K.concatenate([_h_tm1, att_words])
+        for i in range(self.att_layers_cnt):
+            beta = K.relu(K.bias_add(K.dot(beta, self.att_h1_kernel_list[i]), self.att_h1_bias_list[i]))
+                                                            # beta = (batch, sens, timesteps, 1)
         c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
         c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)
 

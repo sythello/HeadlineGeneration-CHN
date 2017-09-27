@@ -12,13 +12,13 @@ def Generate(
     w2id,
     id2w,
     Title_len,
-    beam_size=100,
-    n_best=100
+    beam_size=20,
+    n_best=20
 ):
 	# input_sen is a list of wid
 	# Return: a list of n_best tuples with format (sen, avg_log_p)
 
-	# print ' '.join([id2w[wid] for wid in input_sen]).encode('utf-8')
+	# print '<Input_sen>' + ' '.join([id2w[wid] for wid in input_sen]).encode('utf-8')
 
 	bg_id = w2id['BG']
 	ed_id = w2id['ED']

@@ -199,11 +199,12 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     encode_h1 = Dense(h_dim, activation='softmax')(encode_h1)
     encode_h1_masked = Masking()(encode_h1)
     # shape = (batch, Max_sen, Sen_len, h_dim)
-    encode_h1_last = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
+    encode_h1_first = Lambda(lambda x : x[:, :, 0, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
     # shape = (batch, Max_sen, h_dim)
-    encode_h2 = GRU(h_dim, return_sequences=True)(encode_h1_last)
-    # encode_h2 = Dense(h_dim, activation='softmax')(encode_h2)
+    encode_h2 = GRU(h_dim, return_sequences=True)(encode_h1_first)
     # shape = (batch, Max_sen, h_dim)
+    encode_h2_first = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
+    # shape = (batch, h_dim)
 
     ref_sen = Input(shape=(Title_len,))
     L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)
@@ -211,7 +212,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     ref_emb = L_e2(ref_sen)
     # (batch, Title_len, wv_dim)
 
-    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1_masked])
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1_masked], initial_state=[encode_h2_first])
     # shape = (batch, Title_len, h_dim)
 
     step_id = Input(shape=(1,))
@@ -221,5 +222,5 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
 
     model = Model(inputs=[input_sen, ref_sen, step_id], outputs=output_dstrb)
     model.compile(optimizer='adam', loss=m_NLL)
-    # model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb])
-    return model, None
+    model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, step_vec, output_dstrb])
+    return model, model_show

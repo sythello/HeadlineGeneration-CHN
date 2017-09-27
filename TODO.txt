@@ -7,4 +7,8 @@ Try segmentation
 tqdm (ok)
 Reduce Mem cost at 'd2_onehot' (ok)
 
-Use model.save() instead of cPickle.dump()
++ Use model.save() instead of cPickle.dump()
+
++ Check intermediate datas in the network
+
+*
