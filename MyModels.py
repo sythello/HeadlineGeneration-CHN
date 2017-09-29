@@ -179,7 +179,7 @@ def BiGRU_Attention_Ref_AutoEncoder(id2v, Sen_len, Max_sen, Title_len, h_dim=300
     model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_seq, ref_emb, decode_seq, step_vec, output_dstrb])
     return model, model_show
 
-def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15, h_dim=300):
+def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15, h_dim=300):
     vocab_size = len(id2v)
     Body_len = Sen_len * Max_sen
 
@@ -188,39 +188,46 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=50, Max_sen=7, Title_len=15
     L_e1.trainable = False
     input_emb = L_e1(input_sen)
 
-    encoder_depth_1 = 3
+    encoder_depth_1 = 1
 
-    # Treat the body as several sequences
+    ## Treat the body as several sequences
     encode_h1 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
-    # shape = (batch, Max_sen, Sen_len, h_dim)
+    ## shape = (batch, Max_sen, Sen_len, h_dim)
     for i in range(encoder_depth_1):
         encode_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat'))(encode_h1)
 
     encode_h1 = Dense(h_dim, activation='softmax')(encode_h1)
-    encode_h1_masked = Masking()(encode_h1)
-    # shape = (batch, Max_sen, Sen_len, h_dim)
+    # encode_h1_masked = Masking()(encode_h1)
+    ## shape = (batch, Max_sen, Sen_len, h_dim)
     encode_h1_first = Lambda(lambda x : x[:, :, 0, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
-    # shape = (batch, Max_sen, h_dim)
+    encode_h1_last = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
+    encode_h1_summ = Dense(h_dim, activation=None)(Concatenate()([encode_h1_first, encode_h1_last]))
+    ## shape = (batch, Max_sen, h_dim)
     encode_h2 = GRU(h_dim, return_sequences=True)(encode_h1_first)
-    # shape = (batch, Max_sen, h_dim)
+    ## shape = (batch, Max_sen, h_dim)
     encode_h2_first = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
-    # shape = (batch, h_dim)
+    encode_h2_last = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
+    encode_h2_summ = Dense(h_dim, activation=None)(Concatenate()([encode_h2_first, encode_h2_last]))
+
+    ## shape = (batch, h_dim)
 
     ref_sen = Input(shape=(Title_len,))
     L_e2 = Embedding(input_dim=vocab_size, output_dim=300, weights=[id2v], mask_zero=True, input_length=Title_len)
     L_e2.trainable = False
     ref_emb = L_e2(ref_sen)
-    # (batch, Title_len, wv_dim)
+    ## shape = (batch, Title_len, wv_dim)
 
-    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1_masked], initial_state=[encode_h2_first])
-    # shape = (batch, Title_len, h_dim)
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1], initial_state=[encode_h2_summ])
+    ## shape = (batch, Title_len, h_dim)
 
-    step_id = Input(shape=(1,))
-    step_vec = Lambda(index_op, output_shape=index_output_shape)([decode_seq, step_id])
+    # step_id = Input(shape=(1,))
+    # step_vec = Lambda(index_op, output_shape=index_output_shape)([decode_seq, step_id])
+    # output_dstrb = Dense(vocab_size, activation='softmax')(step_vec)
 
-    output_dstrb = Dense(vocab_size, activation='softmax')(step_vec)
+    output_dstrb = Dense(vocab_size, activation='softmax')(decode_seq)
+    ## shape = (batch, Title_len, vocab_size)
 
-    model = Model(inputs=[input_sen, ref_sen, step_id], outputs=output_dstrb)
-    model.compile(optimizer='adam', loss=m_NLL)
-    model_show = Model(inputs=[input_sen, ref_sen, step_id], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, step_vec, output_dstrb])
+    model = Model(inputs=[input_sen, ref_sen], outputs=output_dstrb)
+    model.compile(optimizer='adam', loss=m_SeqNLL)
+    model_show = Model(inputs=[input_sen, ref_sen], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb])
     return model, model_show

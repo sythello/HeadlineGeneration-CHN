@@ -60,13 +60,14 @@ def Generate(
 			ref_batch.append(t)
 		ref_batch = np.array(ref_batch, dtype='int64')
 		in_batch = np.array([input_sen for _ in range(len(best_open))], dtype='int64')
-		step_batch = np.array([step for _ in range(len(best_open))], dtype='int64')
+		# step_batch = np.array([step for _ in range(len(best_open))], dtype='int64')
 
 		# print 'in_batch.shape = %s' % str(in_batch.shape)
 		# print 'ref_batch.shape = %s' % str(ref_batch.shape)
 		# print 'step_batch.shape = %s' % str(step_batch.shape)
 
-		distr_list = model.predict([in_batch, ref_batch, step_batch])
+		distr_list = model.predict([in_batch, ref_batch])[:, step]	
+		## shape = (batch, Title_len, vocab_size) -> (batch, vocab_size)
 
 		for i in range(len(best_open)):		# For each candidate partial sentence
 			t = best_open[i][0] 			# title (partial)

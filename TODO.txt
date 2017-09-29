@@ -11,4 +11,8 @@ Reduce Mem cost at 'd2_onehot' (ok)
 
 + Check intermediate datas in the network
 
-*
+- Remove duplicate training data
+- Downsize the model
+- Decrease vocab in the model
+- Try generating the body
+- Normalization

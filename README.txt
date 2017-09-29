@@ -5,3 +5,12 @@
 data/Raw_data.zip	(解压之后即是data/Raw_data)
 data/Word-based/SohuNews_w2v_CHN_300_seg.bin.syn0.npy
 请直接向作者勒索：sythello@163.com
+
+Requirements (haven't tried other versions):
+Keras(2.0.8)
+Tensorflow(1.3.0)
+gensim(2.0.0)
+pydot(1.2.3)
+graphviz(0.8)
+h5py(2.7.0)
+tqdm(4.15.0)
