@@ -11,7 +11,12 @@ Reduce Mem cost at 'd2_onehot' (ok)
 
 + Check intermediate datas in the network
 
-- Remove duplicate training data
++ Remove duplicate training data
++ Modify block index printing (show overall progress)
++ Debug in generating process
+
+* Debug in data processing
+
 - Downsize the model
 - Decrease vocab in the model
 - Try generating the body

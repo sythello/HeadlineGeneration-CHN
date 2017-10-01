@@ -78,12 +78,12 @@ def train_lstm(
 	print "%d valid examples" % valid_n
 	print "%d test examples" % test_n
 
-	t = prepare_data_2d(train[0], Title_len + 1)[0]   		# Train set Titles
-	b = prepare_data_3dto2d(train[1], Max_len)[0]   		# Train set Bodies
+	t = prepare_data_2d(train[0], Title_len + 1)[0]   									# Train set Titles
+	b = prepare_data_3d(train[1], Max_sen, Sen_len)[0].reshape(train_n, Max_len)   		# Train set Bodies
 	v_t = prepare_data_2d(valid[0], Title_len + 1)[0]
-	v_b = prepare_data_3dto2d(valid[1], Max_len)[0]
+	v_b = prepare_data_3d(valid[1], Max_sen, Sen_len)[0].reshape(valid_n, Max_len)
 	ts_t = prepare_data_2d(test[0], Title_len + 1)[0]
-	ts_b = prepare_data_3dto2d(test[1], Max_len)[0]
+	ts_b = prepare_data_3d(test[1], Max_sen, Sen_len)[0].reshape(test_n, Max_len)
 	# shape = (batch, words)
 
 	# t_onehot = to_onehot_2d(t, vocab_size)
@@ -127,7 +127,7 @@ def train_lstm(
 		# 	model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 		for e in range(max_epochs):
 			for i in range(0, blocks):
-				print 'Block %d/%d' % (i, blocks)
+				print 'Block %d/%d' % (i + e * block_size, blocks * max_epochs)
 				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
 						  y=get_labels(t, i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
@@ -136,9 +136,9 @@ def train_lstm(
 
 				Saveweights(model, model_file_name)
 				Saveweights(model_show, model_show_file_name)
-	elif options['mode'] == 'debug':
-		train_input_data = get_input_data(b, t)
-		train_labels = get_labels(t)
+	elif options['mode'] == 'debug':	### DEBUGGING: Try to generate the 2nd sentence in body
+		train_input_data = get_input_data(b, b[:, Sen_len : Sen_len + Title_len])
+		train_labels = get_labels(b[:, Sen_len + 1 : Sen_len + Title_len + 1])
 		print 'input shape = %s' % str((train_input_data[0].shape, train_input_data[1].shape))
 		print 'labels shape = %s' % str(train_labels.shape)
 		# model.fit(x=train_input_data,\
@@ -154,8 +154,10 @@ def train_lstm(
 		Saveweights(model, model_file_name)
 		Saveweights(model_show, model_show_file_name)
 	else:
-		model = load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL})
-		model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL})
+		# model = load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL})
+		# model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL})
+		model.set_weights(load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL}).get_weights())
+		model_show.set_weights(load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_SeqNLL':m_SeqNLL}).get_weights())
 
 	# open('model_weights.txt', 'w').write(str(model.get_weights()))
 	# open('model_config.txt', 'w').write(str(model.get_config()))
@@ -164,7 +166,7 @@ def train_lstm(
 	id2w = cPickle.load(open('%s/id2w.pkl' % data_dir, 'r'))
 	w2id = cPickle.load(open('%s/w2id.pkl' % data_dir, 'r'))
 
-	show_cnt = 10
+	show_cnt = 5
 	# train_gen_title = model.predict(b[:show_cnt])
 	# valid_gen_title = model.predict(v_b[:show_cnt])
 	# test_gen_title = model.predict(ts_b[:show_cnt])
@@ -175,15 +177,19 @@ def train_lstm(
 	def get_output(org_title_vec, org_body_vec, body_data, ref_data, cnt, dataset_name):
 		# model_show outputs = [input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb]
 		layer_names = ['input_emb', 'encode_h1', 'encode_h2', 'ref_emb', 'decode_seq', 'output_dstrb']
-		cnt = min(len(org_title_vec), cnt)
-		_body = body_data[:cnt]
-		_ref = ref_data[:cnt, 1:]
-		## shape = (cnt, timesteps)
+		cnt = min(len(body_data), cnt)
+		body_data = body_data[:cnt]
+		ref_data = ref_data[:cnt]
 
-		inputs = [_body, _ref]
+		inputs = [body_data, ref_data[:, :Title_len]]
 
 		# print '--- inputs:'
 		# print inputs
+
+		_body = body_data.reshape(cnt, Max_sen, Sen_len)
+		## shape = (cnt, Max_sen, Sen_len)
+		_ref = ref_data
+		## shape = (cnt, Title_len + 1)
 
 		model_output = model.predict(inputs)
 		model_output = np.array(model_output).reshape(cnt, Title_len, -1)
@@ -196,15 +202,16 @@ def train_lstm(
 		# 	all_layer_output.append(np.array(l).reshape(cnt, Title_len, *l.shape[1:]))
 
 		for i in range(cnt):			# for each sample
-			org_title = ' '.join([id2w[wid] for wid in org_title_vec[i]])
+			org_title = ' '.join([id2w[wid] for wid in _ref[i]])
 			tcf_gen_title = ' '.join([id2w[np.argmax(d)] for d in model_output[i]])
-			body = '\n\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in org_body_vec[i]])
+			body = '\n\n'.join([' '.join([id2w[wid] for wid in sen]) for sen in _body[i]])
 
 			if not os.path.exists('%s/Sample-output-Keras' % data_dir):
 				os.mkdir('%s/Sample-output-Keras' % data_dir)
 
 			fout = open('%s/Sample-output-Keras/out-%s%d.txt' % (data_dir, dataset_name, i), 'w')
 			fout.write(('Title:\n%s\nTeacher Forced Generated Title:\n%s\n' % (org_title, tcf_gen_title)).encode('utf-8'))
+			ppl = 0
 			fout.write('Distribution for each word in title:\n')
 			for j in range(Title_len):
 				dst = model_output[i, j]	# distribution for j-th word
@@ -212,14 +219,28 @@ def train_lstm(
 				fout.write('%d:\n' % (j+1))
 				for k in k_argm:	# k is the word_id
 					fout.write(('%s: %.6lf\n' % (id2w[k], dst[k])).encode('utf-8'))
+				fout.write(('* %s: %.6lf\n' % (id2w[ref_data[i][j+1]], dst[ref_data[i][j+1]])).encode('utf-8'))
+				ppl += -np.log(dst[ref_data[i][j+1]])
 				fout.write('\n')
+
+			fout.write('\nPerplexity = %.6lf\n' % (ppl / Title_len))
 
 			fout.write('\nOutput of each layer:\n')
 			for j in range(len(layer_names)):	# for each layer
 				fout.write('%s:\n' % layer_names[j])
 				fout.write(str(all_layer_output[j][i]) + '\n')
 
-			best_gen_title_list = Generate(model, body_data[i], vocab_size, w2id, id2w, Title_len=Title_len)
+			best_gen_title_list, allstep_best_open = Generate(model, body_data[i], vocab_size, w2id, id2w, Title_len=Title_len)
+			# Debug
+			fout.write('\nIntermediate Titles:\n')
+			for step in range(len(allstep_best_open)):
+				fout.write('--- Step %d ---\n' % (step + 1))
+				for k in range(len(allstep_best_open[step])):
+					(t, p) = allstep_best_open[step][k]
+					_title = ' '.join(id2w[wid] for wid in t)
+					fout.write('No. %d\n%s\n%.6f\n' % (k+1, _title.encode('utf-8'), p))
+				fout.write('--- End of Step %d ---\n' % (step + 1))
+
 			fout.write('\nGenerated Titles:\n')
 			for k in range(len(best_gen_title_list)):
 				(t, p) = best_gen_title_list[k]
@@ -229,9 +250,9 @@ def train_lstm(
 
 			fout.close()
 
-	get_output(train[0], train[1], b, t[:, 0 : Title_len + 1], show_cnt, 'train')
-	get_output(valid[0], valid[1], v_b, v_t[:, 0 : Title_len + 1], show_cnt, 'valid')
-	get_output(test[0], test[1], ts_b, ts_t[:, 0 : Title_len + 1], show_cnt, 'test')
+	get_output(train[0], list(zip(train[0]))[1], b, b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'train')
+	get_output(valid[0], list(zip(valid[0]))[1], v_b, v_b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'valid')
+	get_output(test[0], list(zip(test[0]))[1], ts_b, ts_b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'test')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

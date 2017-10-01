@@ -12,8 +12,8 @@ def Generate(
     w2id,
     id2w,
     Title_len,
-    beam_size=20,
-    n_best=20
+    beam_size=5,
+    n_best=5
 ):
 	# input_sen is a list of wid
 	# Return: a list of n_best tuples with format (sen, avg_log_p)
@@ -27,6 +27,8 @@ def Generate(
 
 	best_open = [(init_title, 0)]							# (partial title, sum_log_p)
 	best_close = []											# (partial title, avg_log_p)
+
+	allstep_best_open = []
 
 	# pred_title = init_title
 	# p = 0.0
@@ -52,6 +54,7 @@ def Generate(
 	# 	# print '------' + ' '.join([id2w[wid] for wid in pred_title]).encode('utf-8')
 
 	# return [(pred_title, p / 10)]
+		allstep_best_open.append(best_open)
 
 	#	GENERATE...
 		ref_batch = []
@@ -102,6 +105,6 @@ def Generate(
 		best_close.append( (t + [ed_id], p / (Title_len - 1)) )		
 
 	best_close.sort(key=lambda x : -x[1])	# sort by p (big -> small)
-	return best_close[0 : n_best]
+	return best_close[0 : n_best], allstep_best_open
 
 
