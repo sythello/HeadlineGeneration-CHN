@@ -127,7 +127,7 @@ def train_lstm(
 		# 	model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 		for e in range(max_epochs):
 			for i in range(0, blocks):
-				print 'Block %d/%d' % (i + e * block_size, blocks * max_epochs)
+				print 'Block %d/%d' % (i + e * blocks, blocks * max_epochs)
 				model.fit(x=get_input_data(b, b[:, Sen_len : Sen_len + Title_len], i*block_size, (i+1)*block_size),\
 						  y=get_labels(b[:, Sen_len + 1 : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
