@@ -128,10 +128,10 @@ def train_lstm(
 		for e in range(max_epochs):
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i + e * block_size, blocks * max_epochs)
-				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
-						  y=get_labels(t, i*block_size, (i+1)*block_size),\
+				model.fit(x=get_input_data(b, b[:, Sen_len : Sen_len + Title_len], i*block_size, (i+1)*block_size),\
+						  y=get_labels(b[:, Sen_len + 1 : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
-						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t, i*v_block_size, (i+1)*v_block_size)],\
+						  validation_data=[get_input_data(v_b, v_b[:, Sen_len : Sen_len + Title_len], i*v_block_size, (i+1)*v_block_size), get_labels(v_b[:, Sen_len + 1 : Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
 				Saveweights(model, model_file_name)

@@ -7,3 +7,4 @@ data/*-based/*.h5
 *.zip
 *.pyc
 *.syn0.npy
+*Sample-output*
