@@ -129,16 +129,16 @@ def train_lstm(
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i + e * blocks, blocks * max_epochs)
 				model.fit(x=get_input_data(b, b[:, Sen_len : Sen_len + Title_len], i*block_size, (i+1)*block_size),\
-						  y=get_labels(b[:, Sen_len + 1 : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
+						  y=get_labels(b[:, Sen_len : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
-						  validation_data=[get_input_data(v_b, v_b[:, Sen_len : Sen_len + Title_len], i*v_block_size, (i+1)*v_block_size), get_labels(v_b[:, Sen_len + 1 : Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size)],\
+						  validation_data=[get_input_data(v_b, v_b[:, Sen_len : Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size), get_labels(v_b[:, Sen_len: Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
 				Saveweights(model, model_file_name)
 				Saveweights(model_show, model_show_file_name)
 	elif options['mode'] == 'debug':	### DEBUGGING: Try to generate the 2nd sentence in body
 		train_input_data = get_input_data(b, b[:, Sen_len : Sen_len + Title_len])
-		train_labels = get_labels(b[:, Sen_len + 1 : Sen_len + Title_len + 1])
+		train_labels = get_labels(b[:, Sen_len: Sen_len + Title_len + 1])
 		print 'input shape = %s' % str((train_input_data[0].shape, train_input_data[1].shape))
 		print 'labels shape = %s' % str(train_labels.shape)
 		# model.fit(x=train_input_data,\

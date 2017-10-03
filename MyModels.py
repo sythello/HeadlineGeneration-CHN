@@ -14,6 +14,7 @@ from MyLayers import *
 
 # y_true: [[[0, ..., 1(id=w1), ..., 0], [0, ..., 1(id=w2), ..., 0], (nwords...)], (nsamples...)]
 # y_pred: [[[P(w1), P(w2), ...], [P(w1), P(w2), ...], (nwords...)], (nsamples...)]
+# shape = (samples, Title_len, vocab_size)
 # loss: NLL
 def m_SeqNLL(y_true, y_pred):
     # nsamples = K.shape(y_true)[0]
@@ -23,7 +24,11 @@ def m_SeqNLL(y_true, y_pred):
     # loss_1d = K.batch_dot(y_true_onehot_2d, y_pred_2d, axes=1)
     # loss = K.mean(loss_1d)
 
-    sim_loss = K.mean(K.mean(K.batch_dot(y_true, -K.log(y_pred + 1e-6), axes=2)))
+    _shp = K.shape(y_true)
+    y_true_2d = K.reshape(y_true, (_shp[0] * _shp[1], _shp[2]))
+    y_pred_2d = K.reshape(y_pred, (_shp[0] * _shp[1], _shp[2]))
+
+    sim_loss = K.mean(K.batch_dot(y_true_2d, -K.log(y_pred_2d + 1e-6), axes=1))
     # var_loss = K.mean(K.mean(-K.var(y_pred, axis=1)))
     return sim_loss # + 10 * var_loss
 
@@ -228,6 +233,6 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     ## shape = (batch, Title_len, vocab_size)
 
     model = Model(inputs=[input_sen, ref_sen], outputs=output_dstrb)
-    model.compile(optimizer=RMSProp(), loss=m_SeqNLL)
+    model.compile(optimizer=RMSprop(), loss=m_SeqNLL)
     model_show = Model(inputs=[input_sen, ref_sen], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb])
     return model, model_show
