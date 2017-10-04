@@ -122,12 +122,15 @@ def train_lstm(
 		blocks = train_n / block_size
 		v_block_size = valid_n / blocks
 
+		f_log = open('train.log', 'w')
+
 		# if os.path.isfile(model_file_name):
 		# 	model = load_model(model_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 		# 	model_show = load_model(model_show_file_name, custom_objects={'Attention_2H_GRU':Attention_2H_GRU, 'm_NLL':m_NLL})
 		for e in range(max_epochs):
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i + e * blocks, blocks * max_epochs)
+				f_log.write('Block %d/%d\n' % (i + e * blocks, blocks * max_epochs))
 				model.fit(x=get_input_data(b, b[:, Sen_len : Sen_len + Title_len], i*block_size, (i+1)*block_size),\
 						  y=get_labels(b[:, Sen_len : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
@@ -136,6 +139,7 @@ def train_lstm(
 
 				Saveweights(model, model_file_name)
 				Saveweights(model_show, model_show_file_name)
+
 	elif options['mode'] == 'debug':	### DEBUGGING: Try to generate the 2nd sentence in body
 		train_input_data = get_input_data(b, b[:, Sen_len : Sen_len + Title_len])
 		train_labels = get_labels(b[:, Sen_len: Sen_len + Title_len + 1])

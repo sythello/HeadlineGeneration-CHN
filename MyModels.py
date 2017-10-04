@@ -28,13 +28,13 @@ def m_SeqNLL(y_true, y_pred):
     y_true_2d = K.reshape(y_true, (_shp[0] * _shp[1], _shp[2]))
     y_pred_2d = K.reshape(y_pred, (_shp[0] * _shp[1], _shp[2]))
 
-    sim_loss = K.mean(K.batch_dot(y_true_2d, -K.log(y_pred_2d + 1e-6), axes=1))
+    sim_loss = K.mean(K.batch_dot(y_true_2d, -K.log(y_pred_2d + 1e-8), axes=1))
     # var_loss = K.mean(K.mean(-K.var(y_pred, axis=1)))
     return sim_loss # + 10 * var_loss
 
 def m_NLL(y_true, y_pred):
     # shape = (batch, dim)
-    sim_loss = K.mean(K.batch_dot(y_true, -K.log(y_pred + 1e-6), axes=1))
+    sim_loss = K.mean(K.batch_dot(y_true, -K.log(y_pred + 1e-8), axes=1))
     return sim_loss
 
 # x = [seq, id]
