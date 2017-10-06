@@ -33,7 +33,7 @@ def Generate(
 	# pred_title = init_title
 	# p = 0.0
 
-	for step in range(Title_len):
+	for step in range(1, Title_len):
 
 	# 	DEBUG...
 	#	print 'Step %d' % step
@@ -81,7 +81,7 @@ def Generate(
 			k_best_w = k_argmax(d, beam_size)
 			for wid in k_best_w:			# For k-top next words for this sentence
 				# print '------ %s: %.6f' % (id2w[wid].strip().encode('utf-8'), d[wid])
-				new_p = p + np.log(max(d[wid], 1e-6))
+				new_p = p + np.log(d[wid] + 1e-8)
 				new_t = t[:]
 				new_t[step] = wid
 				temp.append((new_t, new_p))
@@ -91,7 +91,7 @@ def Generate(
 		for (t, p) in temp:
 			if t[step] == ed_id:			# ended
 				best_close.append( (t, p / (step + 1)) )	# average log_p
-			elif t[step] == 0: 			# error
+			elif t[step] == 0: 				# error
 				continue
 			else:
 				best_open.append( (t, p) )					# sum log_p

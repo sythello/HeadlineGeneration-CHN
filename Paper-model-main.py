@@ -139,6 +139,7 @@ def train_lstm(
 
 				Saveweights(model, model_file_name)
 				Saveweights(model_show, model_show_file_name)
+		f_log.close()
 
 	elif options['mode'] == 'debug':	### DEBUGGING: Try to generate the 2nd sentence in body
 		train_input_data = get_input_data(b, b[:, Sen_len : Sen_len + Title_len])
