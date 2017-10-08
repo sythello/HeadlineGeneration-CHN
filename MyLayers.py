@@ -794,3 +794,24 @@ class Attention_2H_GRU(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class LayerNormalisation(Layer):
+    def __init__(self, units, **kwargs):
+        self.units = units
+        super(LayerNormalisation, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.input_shape = input_shape
+        self.W = self.add_weight(shape=(self.units, self.units), name='LN_W', trainable=True)
+        self.b = self.add_weight(shape=(self.units, 1), name='LN_b', trainable=True)
+        super(LayerNormalisation, self).build(input_shape)
+
+    def call(self, x):
+        x_2d = K.batch_flatten(x)
+        x_std = K.std(x_2d, axis=-1, keepdims=True)
+        x_mean = K.mean(x_2d, axis=-1, keepdims=True)
+        x_norm_2d = (x_2d - x_mean) / x_std
+        x_norm = K.reshape(x_norm_2d, K.int_shape(x))
+        x_recons = K.bias_add(K.dot(self.W, x_norm), self.b)
+        return x_recons
+
+

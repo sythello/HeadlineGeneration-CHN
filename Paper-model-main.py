@@ -131,19 +131,19 @@ def train_lstm(
 			for i in range(0, blocks):
 				print 'Block %d/%d' % (i + e * blocks, blocks * max_epochs)
 				f_log.write('Block %d/%d\n' % (i + e * blocks, blocks * max_epochs))
-				model.fit(x=get_input_data(b, b[:, Sen_len : Sen_len + Title_len], i*block_size, (i+1)*block_size),\
-						  y=get_labels(b[:, Sen_len : Sen_len + Title_len + 1], i*block_size, (i+1)*block_size),\
+				model.fit(x=get_input_data(b, t, i*block_size, (i+1)*block_size),\
+						  y=get_labels(t, i*block_size, (i+1)*block_size),\
 						  batch_size=batch_size,\
-						  validation_data=[get_input_data(v_b, v_b[:, Sen_len : Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size), get_labels(v_b[:, Sen_len: Sen_len + Title_len + 1], i*v_block_size, (i+1)*v_block_size)],\
+						  validation_data=[get_input_data(v_b, v_t, i*v_block_size, (i+1)*v_block_size), get_labels(v_t, i*v_block_size, (i+1)*v_block_size)],\
 						  epochs=1)
 
 				Saveweights(model, model_file_name)
 				Saveweights(model_show, model_show_file_name)
 		f_log.close()
 
-	elif options['mode'] == 'debug':	### DEBUGGING: Try to generate the 2nd sentence in body
-		train_input_data = get_input_data(b, b[:, Sen_len : Sen_len + Title_len])
-		train_labels = get_labels(b[:, Sen_len: Sen_len + Title_len + 1])
+	elif options['mode'] == 'debug':
+		train_input_data = get_input_data(b, t)
+		train_labels = get_labels(t)
 		print 'input shape = %s' % str((train_input_data[0].shape, train_input_data[1].shape))
 		print 'labels shape = %s' % str(train_labels.shape)
 		# model.fit(x=train_input_data,\
@@ -255,9 +255,9 @@ def train_lstm(
 
 			fout.close()
 
-	get_output(train[0], list(zip(train[0]))[1], b, b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'train')
-	get_output(valid[0], list(zip(valid[0]))[1], v_b, v_b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'valid')
-	get_output(test[0], list(zip(test[0]))[1], ts_b, ts_b[:, Sen_len : Sen_len + Title_len + 1], show_cnt, 'test')
+	get_output(train[0], list(zip(train[0]))[1], b, t, show_cnt, 'train')
+	get_output(valid[0], list(zip(valid[0]))[1], v_b, v_t, show_cnt, 'valid')
+	get_output(test[0], list(zip(test[0]))[1], ts_b, ts_t, show_cnt, 'test')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

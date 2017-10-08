@@ -3,6 +3,7 @@ from keras.models import *
 from keras.layers import *
 from keras.layers.embeddings import *
 from keras.layers.recurrent import *
+from keras.layers.convolutional import *
 from keras.layers.wrappers import *
 from keras.layers.merge import *
 from keras.layers.normalization import *
@@ -193,13 +194,20 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     L_e1.trainable = False
     input_emb = L_e1(input_sen)
 
-    encoder_depth_1 = 1
+    encoder_depth_1 = 3
 
     ## Treat the body as several sequences
     encode_h1 = Reshape(target_shape=(Max_sen, Sen_len, h_dim))(input_emb)
     ## shape = (batch, Max_sen, Sen_len, h_dim)
     for i in range(encoder_depth_1):
-        encode_h1 = TimeDistributed(Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat'))(encode_h1)
+        encode_h1_r = TimeDistributed(Bidirectional(GRU(h_dim / 2, return_sequences=True), merge_mode='concat'))(encode_h1)
+        ## shape = (batch, Max_sen, Sen_len, h_dim)
+        encode_h1_c = TimeDistributed(Conv1D(filters=h_dim, kernel_size=5, padding='same'))(encode_h1)
+
+        if i == 0:
+            encode_h1 = Add()([encode_h1_r, encode_h1_c])
+        else:
+            encode_h1 = Add()([encode_h1, encode_h1_r, encode_h1_c])
 
     encode_h1 = Dense(h_dim, activation='softmax')(encode_h1)
     # encode_h1_masked = Masking()(encode_h1)
