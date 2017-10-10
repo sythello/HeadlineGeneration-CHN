@@ -218,6 +218,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     encode_h1_summ = Dense(h_dim, activation=None)(Concatenate()([encode_h1_first, encode_h1_last]))
     ## shape = (batch, Max_sen, h_dim)
     encode_h2 = Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat')(encode_h1_summ)
+    encode_h2 = Dense(h_dim, activation=None)(encode_h2)
     ## shape = (batch, Max_sen, h_dim)
     encode_h2_first = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
     encode_h2_last = Lambda(lambda x : x[:, -1, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
@@ -231,7 +232,7 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     ref_emb = L_e2(ref_sen)
     ## shape = (batch, Title_len, wv_dim)
 
-    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1], initial_state=[encode_h2_summ])
+    decode_seq = Attention_2H_GRU(h_dim, return_sequences=True, go_backwards=False)([ref_emb, encode_h2, encode_h1], initial_state_h=encode_h2_summ)
     ## shape = (batch, Title_len, h_dim)
 
     # step_id = Input(shape=(1,))
@@ -242,6 +243,6 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     ## shape = (batch, Title_len, vocab_size)
 
     model = Model(inputs=[input_sen, ref_sen], outputs=output_dstrb)
-    model.compile(optimizer=RMSprop(), loss=m_SeqNLL)
+    model.compile(optimizer=RMSprop(lr=0.0002), loss=m_SeqNLL)
     model_show = Model(inputs=[input_sen, ref_sen], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb])
     return model, model_show

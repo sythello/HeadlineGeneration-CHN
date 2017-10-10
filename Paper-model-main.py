@@ -48,7 +48,7 @@ def train_lstm(
 	model_show_file_name = '%s/%s.%s.h5' % (data_dir, prog_name, extra_name[1])
 	print 'Loading data'
 	input_file = '%s/Wid_data_divsens/wid_list.pkl' % data_dir
-	train, valid, test = load_data(input_file) if options['mode'] == 'train' else load_data(input_file, 500)
+	train, valid, test = load_data(input_file) if options['mode'] == 'train' else load_data(input_file, 1000)
 	id2v = cPickle.load(open('%s/id2v.pkl' % data_dir, 'r'))
 	id2v = np.matrix(id2v)
 

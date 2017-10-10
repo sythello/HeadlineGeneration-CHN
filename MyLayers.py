@@ -488,9 +488,9 @@ class Attention_2H_GRU(Layer):
         self.att_s_dim = input_shape[1][2]      # Attention for sens
         self.att_w_dim = input_shape[2][3]      # Attention for words
         self.input_spec = [InputSpec(shape=(batch_size, None, self.input_dim)), InputSpec(shape=(batch_size, self.sens, self.att_s_dim)), InputSpec(shape=(batch_size, self.sens, None, self.att_w_dim))]
-        self.state_spec = InputSpec(shape=(batch_size, self.units))
+        self.state_spec = [InputSpec(shape=(batch_size, self.units)), InputSpec(shape=(batch_size, self.units))]
 
-        self.states = [None]
+        self.states = [None, None]
 
         # W_xz, W_xr, W_xh
         self.W_xA = self.add_weight((self.input_dim, self.units * 3),
@@ -616,17 +616,18 @@ class Attention_2H_GRU(Layer):
 
         self.built = True
 
-    def call(self, inputs, mask=None, initial_state=None, training=None):
+    def call(self, inputs, mask=None, initial_state_h=None, training=None):
         constants = self.get_constants(inputs, mask, training=None)         # [dp_mask, rec_dp_mask, att_sens, att_words, att_words_mask]
         preprocessed_input = self.preprocess_input(inputs, training=None)
         input_shape = K.int_shape(inputs[0])
 
-        if initial_state == None:
-            initial_state = self.get_initial_states(inputs)
+        if initial_state_h == None:
+            initial_state_h = self.get_initial_states(inputs)
+        initial_state_c = self.get_initial_states(inputs)
 
         last_output, outputs, states = K.rnn(self.step,
                                              preprocessed_input,
-                                             initial_state,
+                                             [initial_state_h, initial_state_c],
                                              go_backwards=self.go_backwards,
                                              mask=mask[0],
                                              constants=constants,
@@ -704,15 +705,16 @@ class Attention_2H_GRU(Layer):
         initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
         initial_state = K.expand_dims(initial_state)  # (samples, 1)
         initial_state = K.tile(initial_state, [1, self.units])  # (samples, output_dim)
-        initial_states = [initial_state for _ in range(len(self.states))]
-        return initial_states
+        # initial_states = [initial_state for _ in range(len(self.states))]
+        return initial_state
 
     def step(self, inputs, states):
-        h_tm1 = states[0]       # previous memory
-        dp_mask = states[1]     # dropout matrices for recurrent units
-        rec_dp_mask = states[2]
-        att_sens = states[3]    # hidden states for sens (high layer)
-        att_words = states[4]   # hiddem states for words (low layer)
+        h_tm1 = states[0]
+        c_tm1 = states[1]       # previous memory
+        dp_mask = states[2]     # dropout matrices for recurrent units
+        rec_dp_mask = states[3]
+        att_sens = states[4]    # hidden states for sens (high layer)
+        att_words = states[5]   # hiddem states for words (low layer)
         # att_words_mask = states[5]  # mask for 'att_words'
 
         # h_tm1 = (batch, dim)
@@ -734,39 +736,43 @@ class Attention_2H_GRU(Layer):
         # c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
         # c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)
 
-        _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
-        _h_tm1 = K.expand_dims(h_tm1, axis=1)               # _h_tm1 = (batch, 1, dim)
-        _h_tm1 = K.tile(_h_tm1, (1, _shp[1], 1))             # _h_tm1 = (batch, sens, dim)
+        x_z = inputs[:, :self.units]
+        x_r = inputs[:, self.units: 2 * self.units]
+        x_h = inputs[:, 2 * self.units:]
 
-        alpha = K.concatenate([_h_tm1, att_sens])           # alpha = (batch, sens, 2 * dim)
+        print 'h_tm1 = ' + str(h_tm1)
+        print 'c_tm1 = ' + str(c_tm1)
+
+        z = self.recurrent_activation(x_z + K.dot(h_tm1 * rec_dp_mask[0], self.W_hz) + K.dot(c_tm1, self.W_cz))
+        r = self.recurrent_activation(x_r + K.dot(h_tm1 * rec_dp_mask[1], self.W_hr) + K.dot(c_tm1, self.W_cr))
+        h_ = self.activation(x_h + K.dot(r * h_tm1 * rec_dp_mask[2], self.W_hh) + K.dot(c_tm1, self.W_ch))
+
+        h = z * h_tm1 + (1 - z) * h_
+
+
+        _shp = K.int_shape(att_words)                       # _shp = tuple(batch, sens, timesteps, dim)
+        _h = K.expand_dims(h, axis=1)                       # _h = (batch, 1, dim)
+        _h = K.tile(_h, (1, _shp[1], 1))                    # _h = (batch, sens, dim)
+
+        alpha = K.concatenate([_h, att_sens])               # alpha = (batch, sens, 2 * dim)
         for i in range(self.att_layers_cnt):
             alpha = K.relu(K.bias_add(K.dot(alpha, self.att_h2_kernel_list[i]), self.att_h2_bias_list[i]))
                                                             # alpha = (batch, sens, 1)
         alpha = K.expand_dims(alpha)                        # alpha = (batch, sens, 1, 1)
 
 
-        _h_tm1 = K.expand_dims(_h_tm1, axis=2)
-        _h_tm1 = K.tile(_h_tm1, (1, 1, _shp[2], 1))
-        beta = K.concatenate([_h_tm1, att_words])
+        _h = K.expand_dims(_h, axis=2)
+        _h = K.tile(_h, (1, 1, _shp[2], 1))
+        beta = K.concatenate([_h, att_words])
         for i in range(self.att_layers_cnt):
             beta = K.relu(K.bias_add(K.dot(beta, self.att_h1_kernel_list[i]), self.att_h1_bias_list[i]))
                                                             # beta = (batch, sens, timesteps, 1)
         c = alpha * beta * att_words                        # c = (batch, sens, timesteps, dim)
-        c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)
-
-        x_z = inputs[:, :self.units]
-        x_r = inputs[:, self.units: 2 * self.units]
-        x_h = inputs[:, 2 * self.units:]
-
-        z = self.recurrent_activation(x_z + K.dot(h_tm1 * rec_dp_mask[0], self.W_hz) + K.dot(c, self.W_cz))
-        r = self.recurrent_activation(x_r + K.dot(h_tm1 * rec_dp_mask[1], self.W_hr) + K.dot(c, self.W_cr))
-        h_ = self.activation(x_h + K.dot(r * h_tm1 * rec_dp_mask[2], self.W_hh) + K.dot(c, self.W_ch))
-
-        h = z * h_tm1 + (1 - z) * h_
+        c = K.sum(K.sum(c, axis=2), axis=1)                 # c = (batch, dim)        
 
         if 0 < self.dropout + self.recurrent_dropout:
             h._uses_learning_phase = True
-        return h, [h]
+        return h, [h, c]
 
     def get_config(self):
         config = {'units': self.units,
