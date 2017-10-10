@@ -179,7 +179,7 @@ def train_lstm(
 	# Generate(model, ts_b[0], vocab_size, w2id, id2w, beam_size=2, n_best=2)
 	# quit()
 
-	def get_output(org_title_vec, org_body_vec, body_data, ref_data, cnt, dataset_name):
+	def get_output(body_data, ref_data, cnt, dataset_name):
 		# model_show outputs = [input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb]
 		layer_names = ['input_emb', 'encode_h1', 'encode_h2', 'ref_emb', 'decode_seq', 'output_dstrb']
 		cnt = min(len(body_data), cnt)
@@ -255,9 +255,9 @@ def train_lstm(
 
 			fout.close()
 
-	get_output(train[0], list(zip(train[0]))[1], b, t, show_cnt, 'train')
-	get_output(valid[0], list(zip(valid[0]))[1], v_b, v_t, show_cnt, 'valid')
-	get_output(test[0], list(zip(test[0]))[1], ts_b, ts_t, show_cnt, 'test')
+	get_output(b, t, show_cnt, 'train')
+	get_output(v_b, v_t, show_cnt, 'valid')
+	get_output(ts_b, ts_t, show_cnt, 'test')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

@@ -217,10 +217,10 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     encode_h1_last = Lambda(lambda x : x[:, :, -1, :], output_shape = lambda s : (s[0], s[1], s[3]))(encode_h1)
     encode_h1_summ = Dense(h_dim, activation=None)(Concatenate()([encode_h1_first, encode_h1_last]))
     ## shape = (batch, Max_sen, h_dim)
-    encode_h2 = Bidirectional(GRU(h_dim, return_sequences=True))(encode_h1_summ)
+    encode_h2 = Bidirectional(GRU(h_dim, return_sequences=True), merge_mode='concat')(encode_h1_summ)
     ## shape = (batch, Max_sen, h_dim)
     encode_h2_first = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
-    encode_h2_last = Lambda(lambda x : x[:, 0, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
+    encode_h2_last = Lambda(lambda x : x[:, -1, :], output_shape = lambda s : (s[0], s[2]))(encode_h2)
     encode_h2_summ = Dense(h_dim, activation=None)(Concatenate()([encode_h2_first, encode_h2_last]))
 
     ## shape = (batch, h_dim)
