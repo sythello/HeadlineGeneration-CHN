@@ -740,8 +740,8 @@ class Attention_2H_GRU(Layer):
         x_r = inputs[:, self.units: 2 * self.units]
         x_h = inputs[:, 2 * self.units:]
 
-        print 'h_tm1 = ' + str(h_tm1)
-        print 'c_tm1 = ' + str(c_tm1)
+        # print 'h_tm1 = ' + str(h_tm1)
+        # print 'c_tm1 = ' + str(c_tm1)
 
         z = self.recurrent_activation(x_z + K.dot(h_tm1 * rec_dp_mask[0], self.W_hz) + K.dot(c_tm1, self.W_cz))
         r = self.recurrent_activation(x_r + K.dot(h_tm1 * rec_dp_mask[1], self.W_hr) + K.dot(c_tm1, self.W_cr))
@@ -772,7 +772,7 @@ class Attention_2H_GRU(Layer):
 
         if 0 < self.dropout + self.recurrent_dropout:
             h._uses_learning_phase = True
-        return h, [h, c]
+        return c, [h, c]
 
     def get_config(self):
         config = {'units': self.units,

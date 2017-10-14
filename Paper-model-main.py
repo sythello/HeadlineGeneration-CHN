@@ -185,6 +185,8 @@ def train_lstm(
 		cnt = min(len(body_data), cnt)
 		body_data = body_data[:cnt]
 		ref_data = ref_data[:cnt]
+		## DEBUG
+		# ref_data[:, 1:] = 0
 
 		inputs = [body_data, ref_data[:, :Title_len]]
 
@@ -201,10 +203,6 @@ def train_lstm(
 		# shape = (cnt, Title_len, dstrb)
 
 		all_layer_output = model_show.predict(inputs)
-		# each layer: (cnt, Title_len, **args)
-		# all_layer_output = []
-		# for l in _all_layer_output:
-		# 	all_layer_output.append(np.array(l).reshape(cnt, Title_len, *l.shape[1:]))
 
 		for i in range(cnt):			# for each sample
 			org_title = ' '.join([id2w[wid] for wid in _ref[i]])
