@@ -69,7 +69,7 @@ def Generate(
 		# print 'ref_batch.shape = %s' % str(ref_batch.shape)
 		# print 'step_batch.shape = %s' % str(step_batch.shape)
 
-		distr_list = model.predict([in_batch, ref_batch])[:, step]	
+		distr_list = model.predict([in_batch, ref_batch])[:, step - 1]	
 		## shape = (batch, Title_len, vocab_size) -> (batch, vocab_size)
 
 		for i in range(len(best_open)):		# For each candidate partial sentence

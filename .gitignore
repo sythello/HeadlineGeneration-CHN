@@ -8,3 +8,4 @@ data/*-based/*.h5
 *.pyc
 *.syn0.npy
 *Sample-output*
+*.log
