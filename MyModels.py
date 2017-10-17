@@ -243,6 +243,6 @@ def BiGRU_Attention_Ref_2H_AutoEncoder(id2v, Sen_len=30, Max_sen=7, Title_len=15
     ## shape = (batch, Title_len, vocab_size)
 
     model = Model(inputs=[input_sen, ref_sen], outputs=output_dstrb)
-    model.compile(optimizer=RMSprop(lr=0.0001), loss=m_SeqNLL)
+    model.compile(optimizer=RMSprop(lr=0.0005), loss=m_SeqNLL)
     model_show = Model(inputs=[input_sen, ref_sen], outputs=[input_emb, encode_h1, encode_h2, ref_emb, decode_seq, output_dstrb])
     return model, model_show

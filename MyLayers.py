@@ -772,7 +772,7 @@ class Attention_2H_GRU(Layer):
 
         if 0 < self.dropout + self.recurrent_dropout:
             h._uses_learning_phase = True
-        return c, [h, c]
+        return h, [h, c]
 
     def get_config(self):
         config = {'units': self.units,

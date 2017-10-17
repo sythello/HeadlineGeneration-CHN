@@ -8,6 +8,12 @@ import sys
 import time
 from datetime import datetime
 
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.2
+set_session(tf.Session(config=config))
+
 import keras
 from keras.models import *
 from keras.layers import *
