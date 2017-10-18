@@ -8,23 +8,6 @@ import sys
 import time
 from datetime import datetime
 
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.2
-set_session(tf.Session(config=config))
-
-import keras
-from keras.models import *
-from keras.layers import *
-from keras.layers.embeddings import *
-from keras.layers.recurrent import *
-from keras.layers.wrappers import *
-from keras.optimizers import *
-from keras.utils import plot_model
-from keras.utils.np_utils import *
-from keras import backend as K
-
 import numpy as np
 import random
 from gensim.models import *
@@ -264,14 +247,34 @@ def train_lstm(
 	get_output(ts_b, ts_t, show_cnt, 'test')
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    ap.add_argument('-dim_proj', type=int, default=300, help='word embeding dimension and HLSTM number of hidden units.')
-    ap.add_argument('-max_epochs', type=int, default=1, help='The maximum number of epoch to run')
-    ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
-    ap.add_argument('-batch_size', type=int, default=100, help='The batch size during training.')
-    ap.add_argument('-valid_batch_size', type=int, default=100, help='The batch size used for validation/test set.')
-    ap.add_argument('-mode', type=str, default='debug', help='"train", "test" or "debug"')
+	ap = argparse.ArgumentParser()
+	ap.add_argument('-dim_proj', type=int, default=300, help='word embeding dimension and HLSTM number of hidden units.')
+	ap.add_argument('-max_epochs', type=int, default=1, help='The maximum number of epoch to run')
+	ap.add_argument('-validFreq', type=int, default=10, help='Compute the validation error after this number of update.')
+	ap.add_argument('-batch_size', type=int, default=100, help='The batch size during training.')
+	ap.add_argument('-valid_batch_size', type=int, default=100, help='The batch size used for validation/test set.')
+	ap.add_argument('-mode', type=str, default='debug', help='"train", "test" or "debug".')
+	ap.add_argument('-limit_gpu', type=float, default=1.0, help='The maximum usage proportion of gpu memory.')
+	args = vars(ap.parse_args())
 
-    args = vars(ap.parse_args())
-    train_lstm(**args)
+	if args['limit_gpu'] < 1.0:
+		import tensorflow as tf
+		from keras.backend.tensorflow_backend import set_session
+		config = tf.ConfigProto()
+		config.gpu_options.per_process_gpu_memory_fraction = args['limit_gpu']
+		set_session(tf.Session(config=config))
+
+	import keras
+	from keras.models import *
+	from keras.layers import *
+	from keras.layers.embeddings import *
+	from keras.layers.recurrent import *
+	from keras.layers.wrappers import *
+	from keras.optimizers import *
+	from keras.utils import plot_model
+	from keras.utils.np_utils import *
+	from keras import backend as K
+
+	del args['limit_gpu']
+	train_lstm(**args)
     
